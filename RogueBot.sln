@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.4.11626.88 stable
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RogueBot", "RogueBot.csproj", "{DD9F941D-6CF5-D512-7643-B957BC9E787B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DD9F941D-6CF5-D512-7643-B957BC9E787B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DD9F941D-6CF5-D512-7643-B957BC9E787B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DD9F941D-6CF5-D512-7643-B957BC9E787B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DD9F941D-6CF5-D512-7643-B957BC9E787B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {DB7FFEA1-7FAD-4243-9275-D61ADC345383}
+	EndGlobalSection
+EndGlobal
