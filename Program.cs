@@ -53,7 +53,7 @@ namespace RogueBot
                         {
                             move = C.Space.ToString();
                         }
-                        else if (currentMap.HasString("REST"))
+                        else if (Died(currentMap))
                         {
                             move = C.Enter.ToString();
                         }
@@ -173,32 +173,34 @@ namespace RogueBot
                 var newMap = ReadMap(console);
                 var map = new Map(newMap);
 
-                if (map.HasString("REST"))
+                if (Died(map))
                 {
                     return map;
                 }
 
-                if (map.Rooms.Count > 0)
+                var player = new Player(map);
+                if (player.Position == null)
+                {
+                    continue;
+                }
+
+                if (map.Player != null)
                 {
                     for (int y = 0; y < newMap.Length; y++)
                     {
                         Debug.WriteLine(new string(newMap[y]));
                     }
 
-                    var player = new Player(map);
-                    if (player.Position == null)
-                    {
-                        continue;
-                    }
-
-                    if (map.Player != null)
-                    {
-                        return new Map(newMap); // screen updated
-                    }
+                    return new Map(newMap); // screen updated
                 }
             }
 
             return null;
+        }
+
+        private static bool Died(Map map)
+        {
+            return map.HasString("REST") || map.HasString("Score");
         }
     }
 }

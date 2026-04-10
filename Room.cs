@@ -30,7 +30,7 @@ namespace RogueBot
         private void ParseRoom(char[][] maps)
         {
             CalculateSize(maps);
-            var expected = new[] { C.WallTop, C.WallSide, C.Door, C.Floor, C.Player, C.Space };
+            var expected = new[] { C.WallTop, C.WallSide, C.Door, C.Floor, C.Player, C.Space, C.Trap };
             for (var y = TopLeft.Y; y < TopLeft.Y + Height; y++)
             {
                 for (var x = TopLeft.X; x < TopLeft.X + Width; x++)

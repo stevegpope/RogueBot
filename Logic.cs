@@ -5,13 +5,14 @@ namespace RogueBot
     public class Logic
     {
         private char? previousMove = null;
+        private Position previousPosition = null;
 
         // Track explored tiles
         public static readonly Dictionary<(int x, int y), int> visited = new();
 
         // Track recent positions (anti-oscillation)
         private readonly Queue<(int x, int y)> lastPositions = new();
-        private const int HistorySize = 500;
+        private const int HistorySize = 50000;
 
         public char ChooseMove(Player player, Map previousMap)
         {
@@ -56,6 +57,7 @@ namespace RogueBot
             finally
             {
                 previousMove = move;
+                previousPosition = player.Position;
 
                 // Track recent positions
                 var pos = (player.Position.X, player.Position.Y);
@@ -85,10 +87,23 @@ namespace RogueBot
                     ? visited[(next.X, next.Y)]
                     : 0;
 
-                // Penalize recently visited positions (prevents back-and-forth)
-                int recentPenalty = lastPositions.Contains((next.X, next.Y)) ? 50 : 0;
+                int score = visitCount;
 
-                int score = visitCount + recentPenalty;
+                if (previousPosition != null && previousPosition != player.Position)
+                {
+                    switch (move)
+                    {
+                        case C.Up when previousPosition.Y <= player.Position.Y - 1:
+                        case C.Down when previousPosition.Y >= player.Position.Y + 1:
+                        case C.Left when previousPosition.X <= player.Position.X - 1:
+                        case C.Right when previousPosition.X >= player.Position.X + 1:
+                            score += 100; // Penalize reversing direction
+                            break;
+                    }
+                }
+
+                // Penalize recently visited positions (prevents back-and-forth)
+                score += lastPositions.Contains((next.X, next.Y)) ? 5 : 0;
 
                 if (score < bestScore)
                 {
@@ -157,6 +172,7 @@ namespace RogueBot
 
             return c != C.WallSide &&
                    c != C.WallTop &&
+                   c != C.Trap &&
                    !char.IsWhiteSpace(c);
         }
     }
