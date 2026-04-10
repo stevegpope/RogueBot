@@ -1,22 +1,36 @@
-﻿namespace RogueBot
+﻿using System.Numerics;
+
+namespace RogueBot
 {
-    internal class Logic
+    public class Logic
     {
         private char? previousMove = null;
 
         // Track explored tiles
-        private readonly HashSet<(int x, int y)> visited = new();
+        public static readonly Dictionary<(int x, int y), int> visited = new();
 
-        internal char ChooseMove(Player player, Map previousMap)
+        // Track recent positions (anti-oscillation)
+        private readonly Queue<(int x, int y)> lastPositions = new();
+        private const int HistorySize = 500;
+
+        public char ChooseMove(Player player, Map previousMap)
         {
-            char move = C.Rest;
+            char move = Explore(player);
 
             try
             {
                 var map = player.Map;
 
                 // Mark current position visited
-                visited.Add((player.Position.X, player.Position.Y));
+                var currentPos = (player.Position.X, player.Position.Y);
+                if (visited.ContainsKey(currentPos))
+                {
+                    visited[currentPos]++;
+                }
+                else
+                {
+                    visited[currentPos] = 1;
+                }
 
                 char? currentChar = null;
                 if (previousMap != null && previousMove != C.DownStairs)
@@ -24,44 +38,31 @@
                     currentChar = previousMap.Maps[player.Position.Y][player.Position.X];
                 }
 
-                if (map.Maps.Any(m => m.Contains("REST")))
-                {
-                    move = C.Enter;
-                }
-                else if (map.Maps.Any(m => m.Contains("More")))
-                {
-                    move = C.Space;
-                }
-                else if (currentChar == C.StairsDown)
+                var room = map.Rooms.FirstOrDefault(r => r.Player != null);
+                if (currentChar == C.StairsDown)
                 {
                     move = C.DownStairs;
                 }
-                else
+                else if (room != null)
                 {
-                    var room = map.Rooms.FirstOrDefault(r => r.Player != null);
+                    var target = room.ChooseTarget(player, currentChar);
 
-                    if (room != null)
+                    if (target != null)
                     {
-                        var target = room.ChooseTarget(player, currentChar);
-
-                        if (target != null)
-                        {
-                            move = GetMoveTowards(player, target);
-                        }
-                        else
-                        {
-                            move = Explore(player);
-                        }
-                    }
-                    else
-                    {
-                        move = Explore(player);
+                        move = GetMoveTowards(player, target);
                     }
                 }
             }
             finally
             {
                 previousMove = move;
+
+                // Track recent positions
+                var pos = (player.Position.X, player.Position.Y);
+                lastPositions.Enqueue(pos);
+
+                if (lastPositions.Count > HistorySize)
+                    lastPositions.Dequeue();
             }
 
             return move;
@@ -70,36 +71,33 @@
         private char Explore(Player player)
         {
             var moves = new[] { C.Up, C.Down, C.Left, C.Right };
+            var bestScore = int.MaxValue;
+            var bestMove = C.Rest;
 
-            // 1. Prefer unvisited tiles
             foreach (var move in moves)
             {
-                if (CanMove(player, move))
+                if (!CanMove(player, move))
+                    continue;
+
+                var next = GetNextPosition(player.Position, move);
+
+                int visitCount = visited.ContainsKey((next.X, next.Y))
+                    ? visited[(next.X, next.Y)]
+                    : 0;
+
+                // Penalize recently visited positions (prevents back-and-forth)
+                int recentPenalty = lastPositions.Contains((next.X, next.Y)) ? 50 : 0;
+
+                int score = visitCount + recentPenalty;
+
+                if (score < bestScore)
                 {
-                    var next = GetNextPosition(player.Position, move);
-                    if (!visited.Contains((next.X, next.Y)))
-                    {
-                        return move;
-                    }
+                    bestScore = score;
+                    bestMove = move;
                 }
             }
 
-            // 2. Try continuing forward
-            if (previousMove != null && CanMove(player, previousMove.Value))
-            {
-                return previousMove.Value;
-            }
-
-            // 3. Try any valid move
-            foreach (var move in moves)
-            {
-                if (CanMove(player, move))
-                {
-                    return move;
-                }
-            }
-
-            return C.Rest;
+            return bestMove;
         }
 
         private static Position GetNextPosition(Position p, char move)
@@ -128,7 +126,7 @@
             };
         }
 
-        internal static char GetMoveTowards(Player player, Position target)
+        public static char GetMoveTowards(Player player, Position target)
         {
             var start = player.Position;
 
@@ -148,18 +146,17 @@
             return C.Rest;
         }
 
-        internal static bool Walkable(Player player, int x, int y)
+        public static bool Walkable(Player player, int x, int y)
         {
             var map = player.Map;
 
-            if (y < 0 || y >= map.Maps.Count || x < 0 || x >= map.Maps.First().Length)
+            if (y < 0 || y >= map.Maps.Length || x < 0 || x >= map.Maps[0].Length)
                 return false;
 
             char c = map.Maps[y][x];
 
             return c != C.WallSide &&
                    c != C.WallTop &&
-                   c != C.Trap &&
                    !char.IsWhiteSpace(c);
         }
     }

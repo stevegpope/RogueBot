@@ -18,6 +18,7 @@ namespace RogueBot
                 var logic = new Logic();
                 Map previousMap = null;
                 Map currentMap = null;
+                Room startRoom = null;
                 string previousMove = null;
 
                 // Bring Rogue window to foreground
@@ -39,24 +40,45 @@ namespace RogueBot
                 {
                     try
                     {
-                        var move = "{ENTER}";
-                        var map = ReadMap(console);
-                        var mapObj = new Map(map);
-
-                        if (previousMap != null)
+                        currentMap = WaitForScreenChange(console);
+                        if (currentMap == null)
                         {
-                            // Shift the map to align with the new viewport
-                            mapObj.Shift(previousMap);
+                            continue;
                         }
 
-                        var hash = GetMapHash(map);
-                        if (mapObj.Player != null)
+
+                        var move = C.Enter.ToString();
+
+                        if (currentMap.HasString("More"))
                         {
-                            var player = new Player(mapObj);
-                            move = logic.ChooseMove(player, previousMap).ToString();
+                            move = C.Space.ToString();
+                        }
+                        else if (currentMap.HasString("REST"))
+                        {
+                            move = C.Enter.ToString();
+                        }
+                        else
+                        {
+                            if (startRoom == null)
+                            {
+                                startRoom = currentMap.Rooms.First();
+                            }
+
+                            if (previousMap != null && previousMove != C.DownStairs.ToString())
+                            {
+                                // Shift the map to align with the new viewport
+                                currentMap.Shift(previousMap, startRoom.TopLeft);
+                            }
+
+                            var player = new Player(currentMap);
+                            if (player.Position != null)
+                            {
+                                move = logic.ChooseMove(player, previousMap).ToString();
+                            }
+
+                            previousMap = currentMap;
                         }
 
-                        previousMap = mapObj;
                         previousMove = move;
 
                         if (move == C.Enter.ToString())
@@ -69,8 +91,6 @@ namespace RogueBot
 
                         Debug.WriteLine(move);
                         SendKeys.SendWait(move);
-
-                        currentMap = WaitForScreenChange(console, hash);
                     }
                     catch (Exception ex)
                     {
@@ -102,10 +122,10 @@ namespace RogueBot
             return rogue;
         }
 
-        private static List<string> ReadMap(IntPtr console)
+        private static char[][] ReadMap(IntPtr console)
         {
             const short WIDTH = 80;
-            const short HEIGHT = 25;
+            const short HEIGHT = 26;
 
             CHAR_INFO[] buffer = new CHAR_INFO[WIDTH * HEIGHT];
 
@@ -127,24 +147,23 @@ namespace RogueBot
             if (!ok)
                 throw new Exception("ReadConsoleOutput failed");
 
-            var map = new List<string>();
+            var map = new char[HEIGHT][];
 
             for (int y = 0; y < HEIGHT; y++)
             {
-                var line = new StringBuilder();
+                map[y] = new char[WIDTH];
                 for (int x = 0; x < WIDTH; x++)
                 {
-                    line.Append(buffer[y * WIDTH + x].UnicodeChar);
+                    map[y][x] = buffer[y * WIDTH + x].UnicodeChar;
                 }
-                map.Add(line.ToString());
             }
 
             return map;
         }
 
-        static Map WaitForScreenChange(IntPtr console, int previousHash)
+        static Map WaitForScreenChange(IntPtr console)
         {
-            const int timeoutMs = 500;
+            const int timeoutMs = 1000;
             var sw = Stopwatch.StartNew();
 
             while (sw.ElapsedMilliseconds < timeoutMs)
@@ -152,16 +171,27 @@ namespace RogueBot
                 Thread.Sleep(5);
 
                 var newMap = ReadMap(console);
-                if (GetMapHash(newMap) != previousHash)
+                var map = new Map(newMap);
+
+                if (map.HasString("REST"))
                 {
-                    for(int y = 0; y < newMap.Count; y++)
+                    return map;
+                }
+
+                if (map.Rooms.Count > 0)
+                {
+                    for (int y = 0; y < newMap.Length; y++)
                     {
-                        Debug.WriteLine(newMap[y]);
+                        Debug.WriteLine(new string(newMap[y]));
                     }
 
-                    Debug.WriteLine("new map hash: "  + GetMapHash(newMap));
+                    var player = new Player(map);
+                    if (player.Position == null)
+                    {
+                        continue;
+                    }
 
-                    if (newMap.Any(s => s.Contains(C.Player) || s.Contains("REST")))
+                    if (map.Player != null)
                     {
                         return new Map(newMap); // screen updated
                     }
@@ -169,18 +199,6 @@ namespace RogueBot
             }
 
             return null;
-        }
-
-        static int GetMapHash(List<string> map)
-        {
-            // Generate a hash of the map to detect changes
-            var result = new StringBuilder();
-            foreach (var line in map)
-            {
-                result.Append(line);
-            }
-
-            return result.ToString().GetHashCode();
         }
     }
 }

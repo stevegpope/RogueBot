@@ -1,34 +1,34 @@
 ﻿namespace RogueBot
 {
-    internal static class C
+    public static class C
     {
         // Map
-        internal const char Space = ' ';
-        internal const char Door = '+';
-        internal const char Floor = '.';
-        internal const char WallSide = '|';
-        internal const char WallTop = '-';
-        internal const char Path = '#';
-        internal const char Player = '@';
-        internal const char Money = '*';
-        internal const char Potion = '!';
-        internal const char Scroll = '?';
-        internal const char Weapon = ')';
-        internal const char Armor = ']';
-        internal const char Wand = '/';
-        internal const char Ring = '=';
-        internal const char Goal = ',';
-        internal const char Food = ':';
-        internal const char StairsDown = '%';
-        internal const char Trap = '^';
+        public const char Space = ' ';
+        public const char Door = '+';
+        public const char Floor = '.';
+        public const char WallSide = '|';
+        public const char WallTop = '-';
+        public const char Path = '#';
+        public const char Player = '@';
+        public const char Money = '*';
+        public const char Potion = '!';
+        public const char Scroll = '?';
+        public const char Weapon = ')';
+        public const char Armor = ']';
+        public const char Wand = '/';
+        public const char Ring = '=';
+        public const char Goal = ',';
+        public const char Food = ':';
+        public const char StairsDown = '%';
+        public const char Trap = '^';
 
         // Actions
-        internal const char Left = 'h';
-        internal const char Down = 'j';
-        internal const char Up = 'k';
-        internal const char Right = 'l';
-        internal const char Rest = '.';
-        internal const char Enter = 'E';
-        internal const char DownStairs = '>';
+        public const char Left = 'h';
+        public const char Down = 'j';
+        public const char Up = 'k';
+        public const char Right = 'l';
+        public const char Rest = '.';
+        public const char Enter = 'E';
+        public const char DownStairs = '>';
     }
 }

@@ -11,7 +11,7 @@
             ItemCode = code;
         }
 
-        internal static bool Start(List<string> maps, int x, int y)
+        public static bool Start(char[][] maps, int x, int y)
         {
             var itemCodes = new[] { C.Money, C.Wand, C.Ring, C.Potion, C.Goal, C.Armor, C.Food, C.Scroll, C.Weapon };
             return itemCodes.Contains(maps[y][x]);

@@ -2,7 +2,7 @@
 
 namespace RogueBot
 {
-    internal class Player
+    public class Player
     {
         Regex regex = new Regex(
             @"Level:\s*(?<Level>\d+)\s+" +
@@ -21,7 +21,7 @@ namespace RogueBot
         public int Armor { get; private set; }
         public int ExpLevel { get; private set; }
         public int ExpPoints { get; private set; }
-        public Position Position { get; private set; }
+        public Position Position { get; set; }
         public Map Map { get; }
 
         public Player(Map map)
@@ -29,8 +29,11 @@ namespace RogueBot
             Map = map;
             var lines = map.Maps;
 
-            var statusLine = lines.FirstOrDefault(m => m.Contains("Hp:"));
-            if (statusLine == null) return;
+            var statusLine = lines.Select(l => new string(l)).FirstOrDefault(m => m.Contains("Hp:"));
+            if (statusLine == null)
+            {
+                return;
+            }
 
             Match m = regex.Match(statusLine);
 

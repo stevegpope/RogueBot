@@ -12,7 +12,7 @@
         }
 
 
-        internal static bool Start(List<string> maps, int x, int y)
+        public static bool Start(char[][] maps, int x, int y)
         {
             return char.IsAsciiLetter(maps[y][x]);
         }

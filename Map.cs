@@ -1,12 +1,14 @@
-﻿namespace RogueBot
+﻿using System.Text;
+
+namespace RogueBot
 {
-    internal class Map
+    public class Map
     {
-        public HashSet<Room> Rooms { get; private set; }
-        public List<string> Maps { get; private set; }
+        public HashSet<Room> Rooms { get; set; }
+        public char[][] Maps { get; set; }
         public Position Player { get; set; }
 
-        internal Map(List<string> maps)
+        public Map(char[][] maps)
         {
             Rooms = new HashSet<Room>();
             Maps = maps;
@@ -15,7 +17,7 @@
 
         private void ParseMap() 
         { 
-            for (var y = 0; y < Maps.Count; y++)
+            for (var y = 0; y < Maps.Length; y++)
             {
                 for (var x = 0; x < Maps[y].Length; x++)
                 {
@@ -32,38 +34,37 @@
             }
         }
 
-        internal void Shift(Map previousMap)
+        public void Shift(Map previousMap, Position topLeft)
         {
-            // Shift relative to the room closest to center of the map
-            var center = new Position(Maps[0].Length / 2, Maps.Count / 2);
+            // Shift relative to the room closest to the specified topLeft position
 
-            var previousCenterRoom = previousMap.Rooms.OrderBy(r => CalculateDistance(r.TopLeft, center)).FirstOrDefault();
-            var centerRoom = Rooms.OrderBy(r => CalculateDistance(r.TopLeft, center)).FirstOrDefault();
-            if (previousCenterRoom == null || centerRoom == null)
+            var previousStartRoom = previousMap.Rooms.OrderBy(r => CalculateDistance(r.TopLeft, topLeft)).FirstOrDefault();
+            var closestRoom = Rooms.OrderBy(r => CalculateDistance(r.TopLeft, topLeft)).FirstOrDefault();
+            if (previousStartRoom == null || closestRoom == null)
             {
                 return;
             }
 
-            if (!previousCenterRoom.TopLeft.Equals(centerRoom.TopLeft))
+            if (!previousStartRoom.TopLeft.Equals(closestRoom.TopLeft))
             {
                 // Shift the map so that the center room is in the same position as the previous center room
-                var shiftX = previousCenterRoom.TopLeft.X - centerRoom.TopLeft.X;
-                var shiftY = previousCenterRoom.TopLeft.Y - centerRoom.TopLeft.Y;
+                var shiftX = previousStartRoom.TopLeft.X - closestRoom.TopLeft.X;
+                var shiftY = previousStartRoom.TopLeft.Y - closestRoom.TopLeft.Y;
 
-                for(var y = 0; y < Maps.Count; y++)
+                for(var y = 0; y < Maps.Length; y++)
                 {
                     for(var x = 0; x < Maps[y].Length; x++)
                     {
                         var newX = x + shiftX;
                         var newY = y + shiftY;
-                        if (newX >= 0 && newX < Maps[y].Length && newY >= 0 && newY < Maps.Count)
+                        if (newX >= 0 && newX < Maps[y].Length && newY >= 0 && newY < Maps.Length)
                         {
-                            Maps[y] = Maps[y].Remove(x, 1).Insert(x, Maps[newY][newX].ToString());
+                            Maps[y][x] = Maps[newY][newX];
                         }
                         else
                         {
                             // Out of bounds, set to empty
-                            Maps[y] = Maps[y].Remove(x, 1).Insert(x, C.Space.ToString());
+                            Maps[y][x] = C.Space;
                         }
                     }
                 }
@@ -76,6 +77,22 @@
         {
             // Calculate the distance between two positions using the Euclidean distance formula
             return Math.Sqrt(Math.Pow(topLeft.X - center.X, 2) + Math.Pow(topLeft.Y - center.Y, 2));
+        }
+
+        public bool HasString(string search)
+        {
+            return Maps.Any(m => new string(m).Contains(search));
+        }
+
+        public override string ToString()
+        {
+            var builder = new StringBuilder();
+            foreach (var line in Maps)
+            {
+                builder.AppendLine(new string(line));
+                builder.Append("\n");
+            }
+            return builder.ToString();
         }
     }
 }

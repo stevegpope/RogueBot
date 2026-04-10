@@ -16,7 +16,7 @@ namespace RogueBot
         public int Width { get; set; }
         public int Height { get; set; }
 
-        public Room(Position topLeft, List<string> maps)
+        public Room(Position topLeft, char[][] maps)
         {
             TopLeft = topLeft;
 
@@ -27,10 +27,10 @@ namespace RogueBot
             ParseRoom(maps);
         }
 
-        private void ParseRoom(List<string> maps)
+        private void ParseRoom(char[][] maps)
         {
             CalculateSize(maps);
-            var expected = new[] { C.WallTop, C.WallSide, C.Door, C.Floor, C.Player };
+            var expected = new[] { C.WallTop, C.WallSide, C.Door, C.Floor, C.Player, C.Space };
             for (var y = TopLeft.Y; y < TopLeft.Y + Height; y++)
             {
                 for (var x = TopLeft.X; x < TopLeft.X + Width; x++)
@@ -67,7 +67,7 @@ namespace RogueBot
             }
         }
 
-        private void CalculateSize(List<string> maps)
+        private void CalculateSize(char[][] maps)
         {
             // Width
             var topPieces = new[] { C.WallTop, C.Door };
@@ -85,7 +85,7 @@ namespace RogueBot
 
             // Height
             var sidePieces = new[] { C.WallSide, C.Door, C.WallTop };
-            for (var y = TopLeft.Y; y < maps.Count; y++)
+            for (var y = TopLeft.Y; y < maps.Length; y++)
             {
                 var code = maps[y][TopLeft.X];
                 if (sidePieces.Contains(code))
@@ -99,14 +99,14 @@ namespace RogueBot
             }
         }
 
-        internal static bool Start(List<string> maps, int x, int y)
+        public static bool Start(char[][] maps, int x, int y)
         {
             char c = maps[y][x];
             char previous = x > 0 ? maps[y][x - 1] : C.Space;
             return c == C.WallTop && previous == C.Space;
         }
 
-        internal Position ChooseTarget(Player player, char? currentChar)
+        public Position ChooseTarget(Player player, char? currentChar)
         {
             // Any items?
             if (ItemSet.Any())
