@@ -35,5 +35,19 @@
         {
             return other != null && X == other.X && Y == other.Y;
         }
+
+        public static bool operator ==(Position? left, Position? right)
+        {
+            if (left is null)
+            {
+                return right is null;
+            }
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(Position? left, Position? right)
+        {
+            return !(left == right);
+        }
     }
 }

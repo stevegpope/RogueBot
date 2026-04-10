@@ -10,7 +10,6 @@ namespace RogueBot
         [STAThread] // Required for SendKeys
         static void Main()
         {
-
             while (true)
             {
                 var rogue = RunRogue();
@@ -21,31 +20,17 @@ namespace RogueBot
                 Room startRoom = null;
                 string previousMove = null;
 
-                // Bring Rogue window to foreground
-                Native.SetForegroundWindow(rogue.MainWindowHandle);
-
-                // Detach from current console FIRST
-                Native.FreeConsole();
-
-                // Attach to Rogue's console
-                if (!Native.AttachConsole(rogue.Id))
-                {
-                    Console.WriteLine("AttachConsole failed!");
-                    return;
-                }
-
-                IntPtr console = Native.GetStdHandle(Native.STD_OUTPUT_HANDLE);
+                var console = ConsoleController.GetConsole(rogue);
 
                 while (!rogue.HasExited)
                 {
                     try
                     {
-                        currentMap = WaitForScreenChange(console);
+                        currentMap = ConsoleController.WaitForScreenChange(console);
                         if (currentMap == null)
                         {
                             continue;
                         }
-
 
                         var move = C.Enter.ToString();
 
@@ -53,7 +38,7 @@ namespace RogueBot
                         {
                             move = C.Space.ToString();
                         }
-                        else if (Died(currentMap))
+                        else if (ConsoleController.Died(currentMap))
                         {
                             move = C.Enter.ToString();
                         }
@@ -66,6 +51,7 @@ namespace RogueBot
 
                             if (previousMap != null && previousMove != C.DownStairs.ToString())
                             {
+                                if (logic.pre)
                                 // Shift the map to align with the new viewport
                                 currentMap.Shift(previousMap, startRoom.TopLeft);
                             }
@@ -73,6 +59,11 @@ namespace RogueBot
                             var player = new Player(currentMap);
                             if (player.Position != null)
                             {
+                                if (player.Hungry())
+                                {
+                                    logic.Eat(console);
+                                }
+
                                 move = logic.ChooseMove(player, previousMap).ToString();
                             }
 
@@ -101,6 +92,7 @@ namespace RogueBot
             }
         }
 
+
         private static Process RunRogue()
         {
             // --- Launch Rogue in its own console
@@ -120,87 +112,6 @@ namespace RogueBot
 
             Console.WriteLine("Bot started. Press Ctrl+C to stop.");
             return rogue;
-        }
-
-        private static char[][] ReadMap(IntPtr console)
-        {
-            const short WIDTH = 80;
-            const short HEIGHT = 26;
-
-            CHAR_INFO[] buffer = new CHAR_INFO[WIDTH * HEIGHT];
-
-            SMALL_RECT region = new SMALL_RECT
-            {
-                Left = 0,
-                Top = 0,
-                Right = WIDTH - 1,
-                Bottom = HEIGHT - 1
-            };
-
-            bool ok = ReadConsoleOutput(
-                console,
-                buffer,
-                new COORD { X = WIDTH, Y = HEIGHT },
-                new COORD { X = 0, Y = 0 },
-                ref region);
-
-            if (!ok)
-                throw new Exception("ReadConsoleOutput failed");
-
-            var map = new char[HEIGHT][];
-
-            for (int y = 0; y < HEIGHT; y++)
-            {
-                map[y] = new char[WIDTH];
-                for (int x = 0; x < WIDTH; x++)
-                {
-                    map[y][x] = buffer[y * WIDTH + x].UnicodeChar;
-                }
-            }
-
-            return map;
-        }
-
-        static Map WaitForScreenChange(IntPtr console)
-        {
-            const int timeoutMs = 1000;
-            var sw = Stopwatch.StartNew();
-
-            while (sw.ElapsedMilliseconds < timeoutMs)
-            {
-                Thread.Sleep(5);
-
-                var newMap = ReadMap(console);
-                var map = new Map(newMap);
-
-                if (Died(map))
-                {
-                    return map;
-                }
-
-                var player = new Player(map);
-                if (player.Position == null)
-                {
-                    continue;
-                }
-
-                if (map.Player != null)
-                {
-                    for (int y = 0; y < newMap.Length; y++)
-                    {
-                        Debug.WriteLine(new string(newMap[y]));
-                    }
-
-                    return new Map(newMap); // screen updated
-                }
-            }
-
-            return null;
-        }
-
-        private static bool Died(Map map)
-        {
-            return map.HasString("REST") || map.HasString("Score");
         }
     }
 }

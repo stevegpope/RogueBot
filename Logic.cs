@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System.Diagnostics;
+using System.Numerics;
 
 namespace RogueBot
 {
@@ -6,6 +7,8 @@ namespace RogueBot
     {
         private char? previousMove = null;
         private Position previousPosition = null;
+        private DateTime CheckedForFoodLast = DateTime.MinValue;
+        private int restTurnsRemaining = 0;
 
         // Track explored tiles
         public static readonly Dictionary<(int x, int y), int> visited = new();
@@ -16,6 +19,12 @@ namespace RogueBot
 
         public char ChooseMove(Player player, Map previousMap)
         {
+            if (restTurnsRemaining > 0)
+            {
+                restTurnsRemaining--;
+                return C.Rest;
+            }
+
             char move = Explore(player);
 
             try
@@ -73,14 +82,29 @@ namespace RogueBot
         private char Explore(Player player)
         {
             var moves = new[] { C.Up, C.Down, C.Left, C.Right };
-            var bestScore = int.MaxValue;
-            var bestMove = C.Rest;
+            var validMoves = new List<char>();
 
             foreach (var move in moves)
             {
-                if (!CanMove(player, move))
-                    continue;
+                if (CanMove(player, move))
+                    validMoves.Add(move);
+            }
 
+            // 🧠 DEAD END DETECTION
+            if (validMoves.Count == 1)
+            {
+                var pos = (player.Position.X, player.Position.Y);
+                Debug.WriteLine("Dead end detected at " + pos);
+                restTurnsRemaining = 10;
+                return C.Rest;
+            }
+
+            // --- existing scoring logic ---
+            var bestScore = int.MaxValue;
+            var bestMove = C.Rest;
+
+            foreach (var move in validMoves)
+            {
                 var next = GetNextPosition(player.Position, move);
 
                 int visitCount = visited.ContainsKey((next.X, next.Y))
@@ -89,20 +113,11 @@ namespace RogueBot
 
                 int score = visitCount;
 
-                if (previousPosition != null && previousPosition != player.Position)
+                if (previousPosition != null && previousPosition == next)
                 {
-                    switch (move)
-                    {
-                        case C.Up when previousPosition.Y <= player.Position.Y - 1:
-                        case C.Down when previousPosition.Y >= player.Position.Y + 1:
-                        case C.Left when previousPosition.X <= player.Position.X - 1:
-                        case C.Right when previousPosition.X >= player.Position.X + 1:
-                            score += 100; // Penalize reversing direction
-                            break;
-                    }
+                    score += 1000;
                 }
 
-                // Penalize recently visited positions (prevents back-and-forth)
                 score += lastPositions.Contains((next.X, next.Y)) ? 5 : 0;
 
                 if (score < bestScore)
@@ -174,6 +189,41 @@ namespace RogueBot
                    c != C.WallTop &&
                    c != C.Trap &&
                    !char.IsWhiteSpace(c);
+        }
+
+        internal void Eat(nint console)
+        {
+            if (CheckedForFoodLast.AddMinutes(1) > DateTime.Now)
+                return;
+
+            try
+            {
+                var inventory = Inventory.Get(console);
+
+                foreach (var item in inventory)
+                {
+                    if (item.IsFood)
+                    {
+                        EatItem(console, item);
+                        return;
+                    }
+                }
+            }
+            finally
+            {
+                CheckedForFoodLast = DateTime.Now;
+            }
+        }
+
+        private void EatItem(nint console, InventoryItem item)
+        {
+            ConsoleController.WaitForScreenChange(console);
+
+            SendKeys.SendWait(C.Eat.ToString());
+
+            var lines = ConsoleController.WaitForText(console, "eat?");
+
+            SendKeys.SendWait(item.Letter.ToString());
         }
     }
 }

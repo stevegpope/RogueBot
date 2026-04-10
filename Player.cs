@@ -21,8 +21,11 @@ namespace RogueBot
         public int Armor { get; private set; }
         public int ExpLevel { get; private set; }
         public int ExpPoints { get; private set; }
-        public Position Position { get; set; }
+        public Position Position { get; private set; }
         public Map Map { get; }
+        public string State { get; private set; }
+
+        private readonly string[] States = new[] { "Hungry", "Weak", "Faint" };
 
         public Player(Map map)
         {
@@ -34,6 +37,8 @@ namespace RogueBot
             {
                 return;
             }
+
+            State = States.FirstOrDefault(s => statusLine.Contains(s));
 
             Match m = regex.Match(statusLine);
 
@@ -59,6 +64,12 @@ namespace RogueBot
             {
                 Console.WriteLine("Player position not found in map.");
             }
+        }
+
+        internal bool Hungry()
+        {
+            var hungryStates = new[] { "Hungry", "Weak", "Faint" };
+            return hungryStates.Any(s => State != null && State.Contains(s));
         }
     }
 }
