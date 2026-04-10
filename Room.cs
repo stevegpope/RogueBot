@@ -109,15 +109,15 @@ namespace RogueBot
         public Position ChooseTarget(Player player, char? currentChar)
         {
             // Any items?
-            if (ItemSet.Any())
-            {
-                var item = ItemSet.First();
-                return item.Position;
-            }
-            else if (MonsterSet.Any())
+            if (MonsterSet.Any())
             {
                 // Move towards the first monster
                 var item = MonsterSet.First();
+                return item.Position;
+            }
+            else if (ItemSet.Any())
+            {
+                var item = ItemSet.First();
                 return item.Position;
             }
             else if (StairsDown != null)

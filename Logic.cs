@@ -125,7 +125,7 @@ namespace RogueBot
                 LastRest = DateTime.Now;
                 var pos = (player.Position.X, player.Position.Y);
                 Debug.WriteLine("Dead end detected at " + pos);
-                restTurnsRemaining = 10;
+                restTurnsRemaining = 25;
                 return C.Search;
             }
 
