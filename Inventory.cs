@@ -4,13 +4,19 @@
     {
         public static IEnumerable<InventoryItem> Get(nint console)
         {
-            SendKeys.SendWait(C.Inventory.ToString());
+            ConsoleController.SendKey(C.Inventory);
 
-            var lines = ConsoleController.WaitForText(console, "worn");
-
+            var lines = ConsoleController.ReadMap(console).Select(line => new string(line)).ToList();
             var items = InventoryItem.Parse(lines);
 
-            SendKeys.SendWait(C.Space.ToString());
+            while (items.Count == 0)
+            {
+                Thread.Sleep(100);
+                lines = ConsoleController.ReadMap(console).Select(line => new string(line)).ToList();
+                items = InventoryItem.Parse(lines);
+            } 
+
+            ConsoleController.SendKey(C.Space);
 
             return items;
         }

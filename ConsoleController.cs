@@ -7,8 +7,13 @@ namespace RogueBot
 {
     public class ConsoleController
     {
+        private static int previousHash = 0;
+        private static Process _rogue;
+
         public static nint GetConsole(Process rogue)
         {
+            _rogue = rogue;
+
             // Bring Rogue window to foreground
             Native.SetForegroundWindow(rogue.MainWindowHandle);
 
@@ -65,39 +70,55 @@ namespace RogueBot
 
         public static Map WaitForScreenChange(IntPtr console)
         {
-            const int timeoutMs = 1000;
-            var sw = Stopwatch.StartNew();
+            Map map = null;
 
-            while (sw.ElapsedMilliseconds < timeoutMs)
+            try
             {
-                Thread.Sleep(5);
+                const int timeoutMs = 100;
+                var sw = Stopwatch.StartNew();
 
-                var newMap = ReadMap(console);
-                var map = new Map(newMap);
-
-                if (Died(map))
+                while (sw.ElapsedMilliseconds < timeoutMs)
                 {
-                    return map;
-                }
+                    Thread.Sleep(5);
 
-                var player = new Player(map);
-                if (player.Position == null)
-                {
-                    continue;
-                }
-
-                if (map.Player != null)
-                {
-                    for (int y = 0; y < newMap.Length; y++)
+                    var newMap = ReadMap(console);
+                    map = new Map(newMap);
+                    if (map.GetHashCode() == previousHash)
                     {
-                        Debug.WriteLine(new string(newMap[y]));
+                        continue; // no change
                     }
 
-                    return new Map(newMap); // screen updated
+                    if (Died(map))
+                    {
+                        return map;
+                    }
+
+                    var player = new Player(map);
+                    if (player.Position == null)
+                    {
+                        continue;
+                    }
+
+                    if (map.Player != null)
+                    {
+                        for (int y = 0; y < newMap.Length; y++)
+                        {
+                            //Debug.WriteLine(new string(newMap[y]));
+                        }
+
+                        return new Map(newMap); // screen updated
+                    }
+                }
+
+                return map;
+            }
+            finally
+            {
+                if (map != null)
+                {
+                    previousHash = map.GetHashCode();
                 }
             }
-
-            return null;
         }
 
         public static bool Died(Map map)
@@ -105,16 +126,34 @@ namespace RogueBot
             return map.HasString("REST") || map.HasString("Score");
         }
 
-        internal static List<string> WaitForText(nint console, string search)
+        internal static List<string> WaitForText(nint console, params string[] search)
         {
             var lines = ConsoleController.ReadMap(console).Select(line => new string(line)).ToList();
-            while (!lines.Any(line => line.Contains(search)))
+            while (!lines.Any(line => search.Any(s => line.Contains(s, StringComparison.OrdinalIgnoreCase))))
             {
+                if (lines.Any(s => s.Contains("More")))
+                {
+                    ConsoleController.SendKey(C.Space);
+                }
+
                 Thread.Sleep(100);
                 lines = ConsoleController.ReadMap(console).Select(line => new string(line)).ToList();
             }
 
             return lines;
+        }
+
+        internal static void SendKey(char key)
+        {
+            Native.SetForegroundWindow(_rogue.MainWindowHandle);
+            SendKey(key.ToString());
+        }
+
+        internal static void SendKey(string str)
+        {
+            Debug.WriteLine($"Sending key: ({str})");
+            SendKeys.SendWait(str);
+            Thread.Sleep(50);
         }
     }
 }

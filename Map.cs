@@ -11,7 +11,14 @@ namespace RogueBot
         public Map(char[][] maps)
         {
             Rooms = new HashSet<Room>();
-            Maps = maps;
+
+            // Our map is the given one, minus the bottom line which contains the status info
+            Maps = new char[maps.Length - 1][];
+            for (var i = 0; i < maps.Length - 1; i++)
+            {
+                Maps[i] = maps[i];
+            }
+
             ParseMap();
         }
 
@@ -81,7 +88,21 @@ namespace RogueBot
 
         public bool HasString(string search)
         {
-            return Maps.Any(m => new string(m).Contains(search));
+            return Maps.Any(m => new string(m).Contains(search, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public string GetString(string search)
+        {
+            foreach (var line in Maps)
+            { 
+                var str = new string(line);
+                if (str.Contains(search))
+                {
+                    return str;
+                }
+            }
+
+            return null;
         }
 
         public override string ToString()
@@ -93,6 +114,11 @@ namespace RogueBot
                 builder.Append("\n");
             }
             return builder.ToString();
+        }
+
+        public override int GetHashCode()
+        {
+            return this.ToString().GetHashCode();
         }
     }
 }

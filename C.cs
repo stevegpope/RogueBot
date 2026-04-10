@@ -32,5 +32,13 @@
         public const char DownStairs = '>';
         public const char Inventory = 'i';
         public const char Eat = 'e';
+        public const char Search = 's';
+        public const char Remove = 'R';
+        public const char PutOn = 'P';
+        public const char Wield = 'w';
+        public const char QuaffPotion = 'q';
+        public const char ReadScroll = 'r';
+        public const char WearArmor = 'W';
+        public const char TakeOff = 'T';
     }
 }

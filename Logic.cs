@@ -6,15 +6,15 @@ namespace RogueBot
     public class Logic
     {
         private char? previousMove = null;
-        private Position previousPosition = null;
-        private DateTime CheckedForFoodLast = DateTime.MinValue;
+        public Position previousPosition = null;
         private int restTurnsRemaining = 0;
+        private DateTime LastRest = DateTime.MinValue;
 
         // Track explored tiles
-        public static readonly Dictionary<(int x, int y), int> visited = new();
+        public static Dictionary<(int x, int y), int> visited = new();
 
         // Track recent positions (anti-oscillation)
-        private readonly Queue<(int x, int y)> lastPositions = new();
+        private Queue<(int x, int y)> lastPositions = new();
         private const int HistorySize = 50000;
 
         public char ChooseMove(Player player, Map previousMap)
@@ -22,7 +22,7 @@ namespace RogueBot
             if (restTurnsRemaining > 0)
             {
                 restTurnsRemaining--;
-                return C.Rest;
+                return C.Search;
             }
 
             char move = Explore(player);
@@ -51,15 +51,44 @@ namespace RogueBot
                 var room = map.Rooms.FirstOrDefault(r => r.Player != null);
                 if (currentChar == C.StairsDown)
                 {
+                    visited = new();
+                    lastPositions = new();
+
                     move = C.DownStairs;
                 }
                 else if (room != null)
                 {
                     var target = room.ChooseTarget(player, currentChar);
-
                     if (target != null)
                     {
                         move = GetMoveTowards(player, target);
+                    }
+                    else if (currentChar != C.Door)
+                    {
+                        // Go to the least visited Door if the room is complete
+                        if (room.IsComplete(player))
+                        {
+                            Position leastVisitedDoor = null;
+                            foreach (var door in room.Doors)
+                            {
+                                var pos = (door.X, door.Y);
+                                int visitCount = visited.ContainsKey(pos) ? visited[pos] : 0;
+                                if (leastVisitedDoor == null || visitCount < visited.GetValueOrDefault((leastVisitedDoor.X, leastVisitedDoor.Y), 0))
+                                {
+                                    leastVisitedDoor = door;
+                                }
+                            }
+
+                            if (leastVisitedDoor == null && room.Doors.Count > 0)
+                            {
+                                leastVisitedDoor = room.Doors.First();
+                            }
+
+                            if (leastVisitedDoor != null)
+                            {
+                                move = GetMoveTowards(player, leastVisitedDoor);
+                            }
+                        }
                     }
                 }
             }
@@ -91,17 +120,18 @@ namespace RogueBot
             }
 
             // 🧠 DEAD END DETECTION
-            if (validMoves.Count == 1)
+            if (validMoves.Count == 1 && LastRest.AddSeconds(10) < DateTime.Now)
             {
+                LastRest = DateTime.Now;
                 var pos = (player.Position.X, player.Position.Y);
                 Debug.WriteLine("Dead end detected at " + pos);
                 restTurnsRemaining = 10;
-                return C.Rest;
+                return C.Search;
             }
 
             // --- existing scoring logic ---
             var bestScore = int.MaxValue;
-            var bestMove = C.Rest;
+            var bestMove = C.Search;
 
             foreach (var move in validMoves)
             {
@@ -173,14 +203,14 @@ namespace RogueBot
             if (target.Y > start.Y && Walkable(player, start.X, start.Y + 1))
                 return C.Down;
 
-            return C.Rest;
+            return C.Search;
         }
 
         public static bool Walkable(Player player, int x, int y)
         {
             var map = player.Map;
 
-            if (y < 0 || y >= map.Maps.Length || x < 0 || x >= map.Maps[0].Length)
+            if (y < 0 || y > 22 || x < 0 || x >= map.Maps[0].Length)
                 return false;
 
             char c = map.Maps[y][x];
@@ -191,39 +221,5 @@ namespace RogueBot
                    !char.IsWhiteSpace(c);
         }
 
-        internal void Eat(nint console)
-        {
-            if (CheckedForFoodLast.AddMinutes(1) > DateTime.Now)
-                return;
-
-            try
-            {
-                var inventory = Inventory.Get(console);
-
-                foreach (var item in inventory)
-                {
-                    if (item.IsFood)
-                    {
-                        EatItem(console, item);
-                        return;
-                    }
-                }
-            }
-            finally
-            {
-                CheckedForFoodLast = DateTime.Now;
-            }
-        }
-
-        private void EatItem(nint console, InventoryItem item)
-        {
-            ConsoleController.WaitForScreenChange(console);
-
-            SendKeys.SendWait(C.Eat.ToString());
-
-            var lines = ConsoleController.WaitForText(console, "eat?");
-
-            SendKeys.SendWait(item.Letter.ToString());
-        }
     }
 }

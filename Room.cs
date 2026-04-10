@@ -128,5 +128,55 @@ namespace RogueBot
 
             return null;
         }
+
+        internal bool IsComplete(Player player)
+        {
+            // A room is complete if all the walls and doors have been discovered
+            var startX = TopLeft.X;
+            var startY = TopLeft.Y;
+            var map = player.Map.Maps;
+
+            // Top
+            for (var x = startX; x < startX + Width; x++)
+            {
+                var c = map[startY][x];
+                if (c == C.Space)
+                {
+                    return false;
+                }
+            }
+
+            // Bottom
+            for (var x = startX; x < startX + Width; x++)
+            {
+                var c = map[startY + Height - 1][x];
+                if (c == C.Space)
+                {
+                    return false;
+                }
+            }
+
+            // Left
+            for (var y = startY; y < startY + Height; y++)
+            {
+                var c = map[y][startX];
+                if (c == C.Space)
+                {
+                    return false;
+                }
+            }
+
+            // Right
+            for (var y = startY; y < startY + Height; y++)
+            {
+                var c = map[y][startX + Width - 1];
+                if (c == C.Space)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
     }
 }
