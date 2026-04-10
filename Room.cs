@@ -140,7 +140,7 @@ namespace RogueBot
             for (var x = startX; x < startX + Width; x++)
             {
                 var c = map[startY][x];
-                if (c == C.Space)
+                if (c != C.WallSide && c != C.WallTop && c != C.Door)
                 {
                     return false;
                 }
@@ -150,7 +150,7 @@ namespace RogueBot
             for (var x = startX; x < startX + Width; x++)
             {
                 var c = map[startY + Height - 1][x];
-                if (c == C.Space)
+                if (c != C.WallSide && c != C.WallTop && c != C.Door)
                 {
                     return false;
                 }
@@ -160,7 +160,7 @@ namespace RogueBot
             for (var y = startY; y < startY + Height; y++)
             {
                 var c = map[y][startX];
-                if (c == C.Space)
+                if (c != C.WallSide && c != C.WallTop && c != C.Door)
                 {
                     return false;
                 }
@@ -170,7 +170,7 @@ namespace RogueBot
             for (var y = startY; y < startY + Height; y++)
             {
                 var c = map[y][startX + Width - 1];
-                if (c == C.Space)
+                if (c != C.WallSide && c != C.WallTop && c != C.Door)
                 {
                     return false;
                 }
