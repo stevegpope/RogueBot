@@ -207,8 +207,8 @@ namespace RogueBot
                 ConsoleController.WaitForText(_console, "hand");
 
                 // Remove a random one
-                var toRemove = new[] { left, right }[new Random().Next(2)];
-                ConsoleController.SendKey(toRemove.Letter);
+                var toRemove = new[] { "l", "r" }[new Random().Next(2)];
+                ConsoleController.SendKey(toRemove);
                 ConsoleController.WaitForText(_console, "Was wearing", "cursed");
             }
 
@@ -233,7 +233,7 @@ namespace RogueBot
             var map = new Map(ConsoleController.ReadMap(_console));
             while (map.HasString("more"))
             {
-                var itemName = ParseItemName(map.Details);
+                var itemName = Items.ParseItemName(map.Details);
                 if (itemName != null)
                 {
                     itemFullName = $"{itemType} of {itemName}";
@@ -303,36 +303,7 @@ namespace RogueBot
             Debug.WriteLine("Finished using " + itemType);
         }
 
-        private string ParseItemName(string details)
-        {
-            var knownDetails = new Dictionary<string, string>()
-            {
-                { "Who?", "confusion" },
-                { "glows blue", "enchant weapon" },
-                { "glows silver", "enchant armor" },
-                { "sense the presence of magic", "detect magic" },
-                { "watching over you", "protection" },
-                { "feel better", "healing" },
-                { "float in the air", "levitation" },
-                { "feel stronger", "strength" },
-                { "identify scroll", "identify" },
-                { "armor is covered by a shimmering", "enchant armor" },
-                { "Universal", "remove curse" },
-                { "warm all over", "restore strength" },
-            };
-
-            foreach (var kvp in knownDetails)
-            {
-                var name = kvp.Key;
-                if (details.Contains(name, StringComparison.OrdinalIgnoreCase))
-                {
-                    return kvp.Value;
-                }
-            }
-
-            return null;
-        }
-
+        
         internal void InventoryCheck()
         {
             var inventory = Inventory.Get(_console);

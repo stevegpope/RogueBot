@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using System.Reflection.Metadata.Ecma335;
 
 namespace RogueBot
 {
@@ -234,12 +233,12 @@ namespace RogueBot
             }
 
             // 🧠 DEAD END DETECTION
-            if (validMoves.Count == 1 && LastRest.AddSeconds(5) < DateTime.Now)
+            if (validMoves.Count == 1 && LastRest.AddSeconds(2) < DateTime.Now)
             {
                 LastRest = DateTime.Now;
                 var pos = (player.Position.X, player.Position.Y);
                 Debug.WriteLine("Dead end detected at " + pos);
-                _searchTurnsRemaining = 25;
+                _searchTurnsRemaining = 10;
                 return C.Search;
             }
 

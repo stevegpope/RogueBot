@@ -12,7 +12,6 @@
         public const char Player = '@';
         public const char Money = '*';
         public const char Potion = '!';
-        public const char Scroll = '?';
         public const char Weapon = ')';
         public const char Armor = ']';
         public const char Wand = '/';
