@@ -1,7 +1,4 @@
 ﻿using System.Diagnostics;
-using System.Numerics;
-using System.Text;
-using static RogueBot.Native;
 
 namespace RogueBot
 {
@@ -34,9 +31,9 @@ namespace RogueBot
             const short WIDTH = 80;
             const short HEIGHT = 26;
 
-            CHAR_INFO[] buffer = new CHAR_INFO[WIDTH * HEIGHT];
+            Native.CHAR_INFO[] buffer = new Native.CHAR_INFO[WIDTH * HEIGHT];
 
-            SMALL_RECT region = new SMALL_RECT
+            Native.SMALL_RECT region = new Native.SMALL_RECT
             {
                 Left = 0,
                 Top = 0,
@@ -44,11 +41,11 @@ namespace RogueBot
                 Bottom = HEIGHT - 1
             };
 
-            bool ok = ReadConsoleOutput(
+            bool ok = Native.ReadConsoleOutput(
                 console,
                 buffer,
-                new COORD { X = WIDTH, Y = HEIGHT },
-                new COORD { X = 0, Y = 0 },
+                new Native.COORD { X = WIDTH, Y = HEIGHT },
+                new Native.COORD { X = 0, Y = 0 },
                 ref region);
 
             if (!ok)
@@ -143,17 +140,58 @@ namespace RogueBot
             return lines;
         }
 
+        internal static void SendKey(string keys)
+        {
+            foreach (var key in keys)
+            {
+                SendKey(key);
+            }
+        }
+
         internal static void SendKey(char key)
         {
             Native.SetForegroundWindow(_rogue.MainWindowHandle);
-            SendKey(key.ToString());
-        }
 
-        internal static void SendKey(string str)
-        {
-            Debug.WriteLine($"Sending key: ({str})");
-            SendKeys.SendWait(str);
-            Thread.Sleep(50);
+            var hInput = Native.GetStdHandle(Native.STD_INPUT_HANDLE);
+
+            var inputs = new Native.INPUT_RECORD[2];
+
+            // Key down
+            inputs[0] = new Native.INPUT_RECORD
+            {
+                EventType = Native.KEY_EVENT,
+                KeyEvent = new Native.KEY_EVENT_RECORD
+                {
+                    bKeyDown = true,
+                    wRepeatCount = 1,
+                    wVirtualKeyCode = (ushort)char.ToUpper(key),
+                    wVirtualScanCode = 0,
+                    UnicodeChar = key,
+                    dwControlKeyState = 0
+                }
+            };
+
+            // Key up
+            inputs[1] = new Native.INPUT_RECORD
+            {
+                EventType = Native.KEY_EVENT,
+                KeyEvent = new Native.KEY_EVENT_RECORD
+                {
+                    bKeyDown = false,
+                    wRepeatCount = 1,
+                    wVirtualKeyCode = (ushort)char.ToUpper(key),
+                    wVirtualScanCode = 0,
+                    UnicodeChar = key,
+                    dwControlKeyState = 0
+                }
+            };
+
+            if (!Native.WriteConsoleInput(hInput, inputs, (uint)inputs.Length, out var written))
+            {
+                throw new Exception("WriteConsoleInput failed");
+            }
+
+            Thread.Sleep(10);
         }
     }
 }

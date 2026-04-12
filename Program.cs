@@ -1,8 +1,4 @@
 ﻿using System.Diagnostics;
-using System.Numerics;
-using System.Text;
-using System.Xml.Linq;
-using static RogueBot.Native;
 
 namespace RogueBot
 {
@@ -19,7 +15,7 @@ namespace RogueBot
                 Map previousMap = null;
                 Map currentMap = null;
                 Room startRoom = null;
-                string previousMove = null;
+                char previousMove = '\0';
 
                 var console = ConsoleController.GetConsole(rogue);
                 Player.InventoryCheck(console);
@@ -34,22 +30,22 @@ namespace RogueBot
                             continue;
                         }
 
-                        var move = C.Enter.ToString();
+                        var move = C.Enter;
 
-                        if (currentMap.HasString("More"))
+                        if (currentMap.HasString("More") || currentMap.HasString("Press space"))
                         {
-                            move = C.Space.ToString();
+                            move = C.Space;
                         }
                         else if (currentMap.HasString("call it"))
                         {
                             Debug.WriteLine("Naming randomly");
                             ConsoleController.SendKey("item " + Random.Shared.NextDouble());
-                            ConsoleController.SendKey("{ENTER}");
+                            ConsoleController.SendKey(C.Enter);
                             Thread.Sleep(500);
                         }
                         else if (ConsoleController.Died(currentMap))
                         {
-                            move = C.Enter.ToString();
+                            move = C.Enter;
                         }
                         else
                         {
@@ -58,7 +54,7 @@ namespace RogueBot
                                 startRoom = currentMap.Rooms.First();
                             }
 
-                            if (previousMap != null && previousMove != C.DownStairs.ToString())
+                            if (previousMap != null && previousMove != C.DownStairs)
                             {
                                 // Shift the map to align with the new viewport
                                 currentMap.Shift(previousMap, startRoom.TopLeft);
@@ -82,7 +78,7 @@ namespace RogueBot
                                     Player.Use(console, foundStr);
                                 }
 
-                                move = logic.ChooseMove(player, previousMap).ToString();
+                                move = logic.ChooseMove(player, previousMap);
                             }
 
                             previousMap = currentMap;
@@ -90,13 +86,6 @@ namespace RogueBot
 
                         previousMove = move;
 
-                        if (move == C.Enter.ToString())
-                        {
-                            move = "{ENTER}";
-                        }
-
-                        // Bring Rogue window to foreground
-                        Native.SetForegroundWindow(rogue.MainWindowHandle);
                         ConsoleController.SendKey(move);
                     }
                     catch (Exception ex)

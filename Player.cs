@@ -254,7 +254,7 @@ namespace RogueBot
             {
                 Debug.WriteLine("Naming");
                 ConsoleController.SendKey(name + " " + Random.Shared.NextDouble());
-                ConsoleController.SendKey("{ENTER}");
+                ConsoleController.SendKey(C.Enter);
                 Thread.Sleep(500);
             }
 

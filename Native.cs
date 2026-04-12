@@ -60,5 +60,37 @@ namespace RogueBot
         public static extern bool SetForegroundWindow(IntPtr hWnd);
 
         public const int STD_OUTPUT_HANDLE = -11;
+        public const int STD_INPUT_HANDLE = -10;
+        public const short KEY_EVENT = 0x0001;
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern bool WriteConsoleInput(
+            IntPtr hConsoleInput,
+            INPUT_RECORD[] lpBuffer,
+            uint nLength,
+            out uint lpNumberOfEventsWritten);
+
+        [StructLayout(LayoutKind.Explicit)]
+        public struct INPUT_RECORD
+        {
+            [FieldOffset(0)]
+            public short EventType;
+
+            [FieldOffset(4)]
+            public KEY_EVENT_RECORD KeyEvent;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct KEY_EVENT_RECORD
+        {
+            [MarshalAs(UnmanagedType.Bool)]
+            public bool bKeyDown;
+
+            public ushort wRepeatCount;
+            public ushort wVirtualKeyCode;
+            public ushort wVirtualScanCode;
+            public char UnicodeChar;
+            public uint dwControlKeyState;
+        }
     }
 }

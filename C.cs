@@ -28,7 +28,7 @@
         public const char Up = 'k';
         public const char Right = 'l';
         public const char Rest = '.';
-        public const char Enter = 'E';
+        public const char Enter = '\r';
         public const char DownStairs = '>';
         public const char Inventory = 'i';
         public const char Eat = 'e';
