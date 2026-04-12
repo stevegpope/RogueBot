@@ -21,6 +21,38 @@ namespace RogueBot
             }
 
             ParseMap();
+            WriteDetailsLine();
+        }
+
+        private void WriteDetailsLine()
+        {
+            const string fileName = "details.txt";
+
+            var line = new string(Maps[0]);
+            if (string.IsNullOrWhiteSpace(line))
+                return;
+
+            List<string> lines;
+
+            if (File.Exists(fileName))
+            {
+                lines = File.ReadAllLines(fileName).ToList();
+            }
+            else
+            {
+                lines = new List<string>();
+            }
+
+            // Add newest entry at top
+            lines.Insert(0, line);
+
+            // Keep only last 1000
+            if (lines.Count > 1000)
+            {
+                lines = lines.Take(1000).ToList();
+            }
+
+            File.WriteAllLines(fileName, lines);
         }
 
         private void ParseMap() 

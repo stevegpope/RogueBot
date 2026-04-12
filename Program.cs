@@ -68,9 +68,17 @@ namespace RogueBot
                 };
 
                 result = Process.Start(psi);
-
-                Console.WriteLine($"Started new Rogue PID: {result.Id}");
                 Thread.Sleep(1000);
+
+                try
+                {
+                    Console.WriteLine($"Started new Rogue PID: {result.Id}");
+                }
+                catch
+                {
+                    Thread.Sleep(1000);
+                    return RunRogue();
+                }
             }
 
             return result;

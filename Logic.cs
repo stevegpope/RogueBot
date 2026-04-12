@@ -39,6 +39,7 @@ namespace RogueBot
                 return C.Search;
             }
 
+            // Automatically search every other turn for now to find our way out of places
             char move = Explore(player);
 
             try
@@ -49,6 +50,12 @@ namespace RogueBot
                 if (_visited.ContainsKey(currentPos))
                 {
                     _visited[currentPos]++;
+
+                    if (_visited[currentPos] > 10)
+                    {
+                        // We are stuck somewhere, start searching every other turn
+                        _searchTurnsRemaining++;
+                    }
                 }
                 else
                 {
@@ -137,8 +144,8 @@ namespace RogueBot
 
         private Position ChooseRoomTarget(Player player, Room room)
         {
-            // Any items?
-            if (room.MonsterSet.Any())
+            // Do not chase monsters if we are low on health
+            if (room.MonsterSet.Any() && player.Hp > player.HpMax/2)
             {
                 // Move towards the first monster
                 var item = room.MonsterSet.First();

@@ -46,7 +46,7 @@ namespace RogueBot
 
         internal void Eat()
         {
-            if (CheckedForFoodLast.AddMinutes(1) > DateTime.Now)
+            if (CheckedForFoodLast.AddSeconds(5) > DateTime.Now)
                 return;
 
             try
@@ -261,13 +261,8 @@ namespace RogueBot
                     var items = InventoryItem.Parse(lines);
 
                     Debug.WriteLine("Close list");
-
-                    while (map.HasString("more"))
-                    {
-                        ConsoleController.SendKey(C.Space);
-                        Thread.Sleep(500);
-                        map = new Map(ConsoleController.ReadMap(_console));
-                    }
+                    ConsoleController.SendKey(C.Space);
+                    Thread.Sleep(500);
 
                     Debug.WriteLine("Choose item to ID");
                     if (items.Any())

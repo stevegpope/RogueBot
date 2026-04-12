@@ -4,15 +4,11 @@ namespace RogueBot
 {
     public class ConsoleController
     {
-        private static int previousHash = 0;
         private static Process _rogue;
 
         public static nint GetConsole(Process rogue)
         {
             _rogue = rogue;
-
-            // Bring Rogue window to foreground
-            Native.SetForegroundWindow(rogue.MainWindowHandle);
 
             // Detach from current console FIRST
             Native.FreeConsole();
@@ -118,8 +114,6 @@ namespace RogueBot
 
         internal static void SendKey(char key)
         {
-            Native.SetForegroundWindow(_rogue.MainWindowHandle);
-
             var hInput = Native.GetStdHandle(Native.STD_INPUT_HANDLE);
 
             var inputs = new Native.INPUT_RECORD[2];
