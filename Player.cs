@@ -1,5 +1,7 @@
 ﻿using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Text.RegularExpressions;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace RogueBot
 {
@@ -29,6 +31,7 @@ namespace RogueBot
         public string State { get; private set; }
 
         private readonly string[] States = new[] { "Hungry", "Weak", "Faint" };
+        private List<string> knownItems = new List<string>();
 
         private nint _console;
 
@@ -137,16 +140,24 @@ namespace RogueBot
             Debug.WriteLine($"Trying to wear armor {newItem.Name} ({newItem.Letter})");
 
             ConsoleController.SendKey(C.TakeOff);
+            Thread.Sleep(500);
 
             ConsoleController.SendKey(C.WearArmor);
+            Thread.Sleep(500);
+
             ConsoleController.WaitForText(_console, "Which object");
-            
             ConsoleController.SendKey(newItem.Letter);
-            FinishUsingItem( "armor");
+
+            FinishUsingItem("armor");
         }
 
         private void ReadScroll(InventoryItem? newItem)
         {
+            if (knownItems.Contains(newItem?.Name))
+            {
+                return;
+            }
+
             Debug.WriteLine($"Trying to read {newItem.Name} ({newItem.Letter})");
 
             ConsoleController.SendKey(C.ReadScroll);
@@ -158,6 +169,11 @@ namespace RogueBot
 
         private void DrinkPotion(InventoryItem? newItem)
         {
+            if (knownItems.Contains(newItem?.Name))
+            {
+                return;
+            }
+
             Debug.WriteLine($"Trying to quaff {newItem.Name} ({newItem.Letter})");
 
             ConsoleController.SendKey(C.QuaffPotion);
@@ -208,13 +224,22 @@ namespace RogueBot
             }
         }
 
-        private void FinishUsingItem(string name)
+        private void FinishUsingItem(string itemType)
         {
             Thread.Sleep(500);
+
+            var itemFullName = itemType + " " + Random.Shared.NextDouble();
 
             var map = new Map(ConsoleController.ReadMap(_console));
             while (map.HasString("more"))
             {
+                var itemName = ParseItemName(map.Details);
+                if (itemName != null)
+                {
+                    itemFullName = $"{itemType} of {itemName}";
+                    knownItems.Add(itemFullName);
+                }
+
                 Debug.WriteLine("MORE");
                 ConsoleController.SendKey(C.Space);
                 Thread.Sleep(500);
@@ -226,7 +251,7 @@ namespace RogueBot
             if (map.HasString("call it"))
             {
                 Debug.WriteLine("Naming");
-                ConsoleController.SendKey(name + " " + Random.Shared.NextDouble());
+                ConsoleController.SendKey(itemFullName);
                 ConsoleController.SendKey(C.Enter);
                 Thread.Sleep(500);
             }
@@ -275,7 +300,37 @@ namespace RogueBot
                 }
             }
 
-            Debug.WriteLine("Finished using " + name);
+            Debug.WriteLine("Finished using " + itemType);
+        }
+
+        private string ParseItemName(string details)
+        {
+            var knownDetails = new Dictionary<string, string>()
+            {
+                { "Who?", "confusion" },
+                { "glows blue", "enchant weapon" },
+                { "glows silver", "enchant armor" },
+                { "sense the presence of magic", "detect magic" },
+                { "watching over you", "protection" },
+                { "feel better", "healing" },
+                { "float in the air", "levitation" },
+                { "feel stronger", "strength" },
+                { "identify scroll", "identify" },
+                { "armor is covered by a shimmering", "enchant armor" },
+                { "Universal", "remove curse" },
+                { "warm all over", "restore strength" },
+            };
+
+            foreach (var kvp in knownDetails)
+            {
+                var name = kvp.Key;
+                if (details.Contains(name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return kvp.Value;
+                }
+            }
+
+            return null;
         }
 
         internal void InventoryCheck()

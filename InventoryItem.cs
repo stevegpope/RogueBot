@@ -17,6 +17,7 @@ namespace RogueBot
                        Name.Contains("meat", StringComparison.OrdinalIgnoreCase) ||
                        Name.Contains("fruit", StringComparison.OrdinalIgnoreCase) ||
                        Name.Contains("food", StringComparison.OrdinalIgnoreCase) ||
+                       Name.Contains("slime", StringComparison.OrdinalIgnoreCase) ||
                        Name.Contains("vegetable", StringComparison.OrdinalIgnoreCase);
             }
         }

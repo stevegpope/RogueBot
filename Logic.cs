@@ -1,7 +1,5 @@
 ﻿using System.Diagnostics;
-using System.Numerics;
-using static System.Windows.Forms.LinkLabel;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.Header;
+using System.Reflection.Metadata.Ecma335;
 
 namespace RogueBot
 {
@@ -21,6 +19,7 @@ namespace RogueBot
         // Track recent positions (anti-oscillation)
         private Queue<(int x, int y)> _lastPositions = new();
         private const int HistorySize = 50000;
+        private static readonly char[] Moves = new[] { C.Up, C.Down, C.Left, C.Right };
 
         public char ChooseMove(Player player, Map currentMap)
         {
@@ -106,13 +105,14 @@ namespace RogueBot
                                 int visitCount = _visited.ContainsKey(pos) ? _visited[pos] : 0;
                                 if (leastVisitedDoor == null || visitCount < _visited.GetValueOrDefault((leastVisitedDoor.X, leastVisitedDoor.Y), 0))
                                 {
+                                    if (visitCount > 5)
+                                    {
+                                        // We may be stuck, skip this one to explore
+                                        continue;
+                                    }
+
                                     leastVisitedDoor = door;
                                 }
-                            }
-
-                            if (leastVisitedDoor == null && room.Doors.Count > 0)
-                            {
-                                leastVisitedDoor = room.Doors.First();
                             }
 
                             if (leastVisitedDoor != null)
@@ -156,7 +156,7 @@ namespace RogueBot
                 var item = room.ItemSet.First();
                 return item.Position;
             }
-            // Do not go down the stairs until we have visited everywhere
+            // Do not go down the stairs until we have explored enough
             else if (room.StairsDown != null && ReadyToMoveOn(player.Map))
             {
                 // Move towards the stairs
@@ -225,10 +225,9 @@ namespace RogueBot
 
         private char Explore(Player player)
         {
-            var moves = new[] { C.Up, C.Down, C.Left, C.Right };
             var validMoves = new List<char>();
 
-            foreach (var move in moves)
+            foreach (var move in Moves)
             {
                 if (CanMove(player, move))
                     validMoves.Add(move);
@@ -287,42 +286,61 @@ namespace RogueBot
             };
         }
 
-        private bool CanMove(Player player, char move)
+        private static bool CanMove(Player player, char move)
         {
             var p = player.Position;
-
-            return move switch
-            {
-                C.Right => Walkable(player.Map, p.X + 1, p.Y),
-                C.Left => Walkable(player.Map, p.X - 1, p.Y),
-                C.Up => Walkable(player.Map, p.X, p.Y - 1),
-                C.Down => Walkable(player.Map, p.X, p.Y + 1),
-                _ => false
-            };
+            var next = GetNextPosition(p, move);
+            return Walkable(player.Map, next);
         }
 
         public static char GetMoveTowards(Player player, Position target)
         {
             var start = player.Position;
 
+            var validMoves = new List<char>();
+
+            var left = false;
+            var right = false;
+            var up = false;
+            var down = false;
+
             // Simple greedy movement
-            if (target.X < start.X && Walkable(player.Map, start.X - 1, start.Y))
-                return C.Left;
+            if (target.X < start.X)
+            {
+                left = true;
+            }
+            if (target.X > start.X) 
+            { 
+                right = true; 
+            }
+            if (target.Y > start.Y) 
+            { 
+                down = true; 
+            }
+            if (target.Y < start.Y) 
+            { 
+                up = true; 
+            }
 
-            if (target.X > start.X && Walkable(player.Map, start.X + 1, start.Y))
-                return C.Right;
+            if (left) validMoves.Add(C.Left);
+            if (right) validMoves.Add(C.Right);
+            if (up) validMoves.Add(C.Up);
+            if (down) validMoves.Add(C.Down);
 
-            if (target.Y < start.Y && Walkable(player.Map, start.X, start.Y - 1))
-                return C.Up;
+            if (validMoves.Any(m => Walkable(player.Map, GetNextPosition(start, m))))
+            {
+                return validMoves[Random.Shared.Next(validMoves.Count)];
+            }
 
-            if (target.Y > start.Y && Walkable(player.Map, start.X, start.Y + 1))
-                return C.Down;
-
-            return C.Search;
+            // Random walkable move
+            return Moves[Random.Shared.Next(Moves.Length)];
         }
 
-        public static bool Walkable(Map map, int x, int y)
+        public static bool Walkable(Map map, Position p)
         {
+            var x = p.X;
+            var y = p.Y;
+
             if (y < 0 || y > 22 || x < 0 || x >= map.Maps[0].Length || y == map.StatusLine)
                 return false;
 
@@ -355,12 +373,6 @@ namespace RogueBot
             if (_startRoom == null)
             {
                 _startRoom = currentMap.Rooms.First();
-            }
-
-            if (_previousMap != null && _previousMove != C.DownStairs)
-            {
-                // Shift the map to align with the new viewport
-                //currentMap.Shift(_previousMap, _startRoom.TopLeft);
             }
 
             player.Update(currentMap);
