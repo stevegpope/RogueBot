@@ -7,6 +7,7 @@ namespace RogueBot
         public HashSet<Room> Rooms { get; set; }
         public char[][] Maps { get; set; }
         public Position Player { get; set; }
+        public int StatusLine { get; set; }
 
         public Map(char[][] maps)
         {
@@ -26,6 +27,9 @@ namespace RogueBot
         { 
             for (var y = 0; y < Maps.Length; y++)
             {
+                var line = new string(Maps[y]);
+                if (line.Contains("Hp: ")) StatusLine = y;
+
                 for (var x = 0; x < Maps[y].Length; x++)
                 {
                     if (Room.Start(Maps, x, y))

@@ -8,7 +8,7 @@ namespace RogueBot
         public Position TopLeft { get; set; }
         public HashSet<Position> Doors { get; private set; }
         public HashSet<Items> ItemSet { get; private set; }
-        public HashSet<Monsters> MonsterSet { get; private set; }
+        public HashSet<Monster> MonsterSet { get; private set; }
         public Position StairsDown = null;
         public Position StairsUp = null;
         public Position Player = null;
@@ -22,7 +22,7 @@ namespace RogueBot
 
             Doors = new HashSet<Position>();
             ItemSet = new HashSet<Items>();
-            MonsterSet = new HashSet<Monsters>();
+            MonsterSet = new HashSet<Monster>();
 
             ParseRoom(maps);
         }
@@ -43,9 +43,9 @@ namespace RogueBot
                     {
                         ItemSet.Add(new Items(new Position(x, y), maps[y][x]));
                     }
-                    else if (Monsters.Start(maps, x, y))
+                    else if (Monster.Start(maps, x, y))
                     {
-                        MonsterSet.Add(new Monsters(new Position(x, y), maps[y][x]));
+                        MonsterSet.Add(new Monster(new Position(x, y), maps[y][x]));
                     }
                     else if (maps[y][x] == C.StairsDown)
                     {
@@ -104,29 +104,6 @@ namespace RogueBot
             char c = maps[y][x];
             char previous = x > 0 ? maps[y][x - 1] : C.Space;
             return c == C.WallTop && previous == C.Space;
-        }
-
-        public Position ChooseTarget(Player player, char? currentChar)
-        {
-            // Any items?
-            if (MonsterSet.Any())
-            {
-                // Move towards the first monster
-                var item = MonsterSet.First();
-                return item.Position;
-            }
-            else if (ItemSet.Any())
-            {
-                var item = ItemSet.First();
-                return item.Position;
-            }
-            else if (StairsDown != null)
-            {
-                // Move towards the stairs
-                return StairsDown;
-            }
-
-            return null;
         }
 
         internal bool IsComplete(Player player)

@@ -12,80 +12,32 @@ namespace RogueBot
                 var rogue = RunRogue();
 
                 var logic = new Logic();
+                Player player = null;
+
                 Map previousMap = null;
                 Map currentMap = null;
                 Room startRoom = null;
                 char previousMove = '\0';
 
                 var console = ConsoleController.GetConsole(rogue);
-                Player.InventoryCheck(console);
 
                 while (!rogue.HasExited)
                 {
                     try
                     {
-                        currentMap = ConsoleController.WaitForScreenChange(console);
+                        currentMap = ConsoleController.WaitForTurnReady(console);
                         if (currentMap == null)
                         {
                             continue;
                         }
 
-                        var move = C.Enter;
-
-                        if (currentMap.HasString("More") || currentMap.HasString("Press space"))
+                        if (player == null)
                         {
-                            move = C.Space;
-                        }
-                        else if (currentMap.HasString("call it"))
-                        {
-                            Debug.WriteLine("Naming randomly");
-                            ConsoleController.SendKey("item " + Random.Shared.NextDouble());
-                            ConsoleController.SendKey(C.Enter);
-                            Thread.Sleep(500);
-                        }
-                        else if (ConsoleController.Died(currentMap))
-                        {
-                            move = C.Enter;
-                        }
-                        else
-                        {
-                            if (startRoom == null)
-                            {
-                                startRoom = currentMap.Rooms.First();
-                            }
-
-                            if (previousMap != null && previousMove != C.DownStairs)
-                            {
-                                // Shift the map to align with the new viewport
-                                currentMap.Shift(previousMap, startRoom.TopLeft);
-
-                                if (logic.previousPosition == currentMap.Player)
-                                {
-                                    Debug.WriteLine($"Player position didn't change after move {previousMove}");
-                                }
-                            }
-
-                            var player = new Player(currentMap);
-                            if (player.Position != null)
-                            {
-                                if (player.Hungry())
-                                {
-                                    Player.Eat(console);
-                                }
-                                else if (currentMap.HasString(" found ") || currentMap.HasString("now have"))
-                                {
-                                    var foundStr = currentMap.GetString(" found ") ?? currentMap.GetString("now have");
-                                    Player.Use(console, foundStr);
-                                }
-
-                                move = logic.ChooseMove(player, previousMap);
-                            }
-
-                            previousMap = currentMap;
+                            player = new Player(currentMap, console);
+                            player.InventoryCheck();
                         }
 
-                        previousMove = move;
-
+                        var move = currentMap.HasString(C.Player.ToString()) ? logic.ChooseMove(player, currentMap) : logic.ChooseMove(currentMap);
                         ConsoleController.SendKey(move);
                     }
                     catch (Exception ex)
@@ -100,33 +52,28 @@ namespace RogueBot
 
         private static Process RunRogue()
         {
-            const string processName = "rogue54"; // no .exe
+            const string processName = "rogue54";
 
-            // 1. Try to find an existing process
-            var existing = Process.GetProcessesByName(processName)
+            var result = Process.GetProcessesByName(processName)
                                   .FirstOrDefault();
 
-            if (existing != null && !existing.HasExited)
+            if (result == null || result.HasExited)
             {
-                Console.WriteLine($"Reusing existing Rogue PID: {existing.Id}");
-                return existing;
+                var psi = new ProcessStartInfo
+                {
+                    FileName = @"rogue54.exe",
+                    WorkingDirectory = Path.Combine(Environment.CurrentDirectory, "rogue"),
+                    UseShellExecute = true,
+                    CreateNoWindow = false
+                };
+
+                result = Process.Start(psi);
+
+                Console.WriteLine($"Started new Rogue PID: {result.Id}");
+                Thread.Sleep(1000);
             }
 
-            // 2. Otherwise start a new one
-            var psi = new ProcessStartInfo
-            {
-                FileName = @"rogue54.exe",
-                WorkingDirectory = Path.Combine(Environment.CurrentDirectory, "rogue"),
-                UseShellExecute = true,
-                CreateNoWindow = false
-            };
-
-            var rogue = Process.Start(psi);
-
-            Console.WriteLine($"Started new Rogue PID: {rogue.Id}");
-
-            Thread.Sleep(1000);
-            return rogue;
+            return result;
         }
     }
 }

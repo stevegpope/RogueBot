@@ -5,13 +5,14 @@
         public static IEnumerable<InventoryItem> Get(nint console)
         {
             ConsoleController.SendKey(C.Inventory);
+            Thread.Sleep(100);
 
             var lines = ConsoleController.ReadMap(console).Select(line => new string(line)).ToList();
             var items = InventoryItem.Parse(lines);
 
             while (items.Count == 0)
             {
-                Thread.Sleep(100);
+                Thread.Sleep(500);
                 lines = ConsoleController.ReadMap(console).Select(line => new string(line)).ToList();
                 items = InventoryItem.Parse(lines);
             } 

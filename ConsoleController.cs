@@ -65,62 +65,30 @@ namespace RogueBot
             return map;
         }
 
-        public static Map WaitForScreenChange(IntPtr console)
+        public static Map WaitForTurnReady(IntPtr console)
         {
             Map map = null;
+            var sw = Stopwatch.StartNew();
 
-            try
+            var validStates = new[] { "More", "REST", "call it", "Level", "identify", "space" };
+
+
+            while (true)
             {
-                const int timeoutMs = 100;
-                var sw = Stopwatch.StartNew();
+                Thread.Sleep(5);
 
-                while (sw.ElapsedMilliseconds < timeoutMs)
+                var newMap = ReadMap(console);
+                map = new Map(newMap);
+
+                if (validStates.Any(s => map.HasString(s)))
                 {
-                    Thread.Sleep(5);
-
-                    var newMap = ReadMap(console);
-                    map = new Map(newMap);
-                    if (map.GetHashCode() == previousHash)
-                    {
-                        continue; // no change
-                    }
-
-                    if (Died(map))
-                    {
-                        return map;
-                    }
-
-                    var player = new Player(map);
-                    if (player.Position == null)
-                    {
-                        continue;
-                    }
-
-                    if (map.Player != null)
-                    {
-                        for (int y = 0; y < newMap.Length; y++)
-                        {
-                            //Debug.WriteLine(new string(newMap[y]));
-                        }
-
-                        return new Map(newMap); // screen updated
-                    }
+                    return map;
                 }
 
-                return map;
+                // Safety timeout (not primary logic)
+                if (sw.ElapsedMilliseconds > 2000)
+                    throw new Exception("Game did not reach a ready state");
             }
-            finally
-            {
-                if (map != null)
-                {
-                    previousHash = map.GetHashCode();
-                }
-            }
-        }
-
-        public static bool Died(Map map)
-        {
-            return map.HasString("REST") || map.HasString("Score");
         }
 
         internal static List<string> WaitForText(nint console, params string[] search)
@@ -186,12 +154,14 @@ namespace RogueBot
                 }
             };
 
+            Debug.WriteLine($"Send key ({key})");
+
             if (!Native.WriteConsoleInput(hInput, inputs, (uint)inputs.Length, out var written))
             {
                 throw new Exception("WriteConsoleInput failed");
             }
 
-            Thread.Sleep(10);
+            Thread.Sleep(50);
         }
     }
 }
