@@ -90,6 +90,7 @@ namespace RogueBot
         internal static List<string> WaitForText(nint console, params string[] search)
         {
             var lines = ConsoleController.ReadMap(console).Select(line => new string(line)).ToList();
+            var stopwatch = Stopwatch.StartNew();
             while (!lines.Any(line => search.Any(s => line.Contains(s, StringComparison.OrdinalIgnoreCase))))
             {
                 if (lines.Any(s => s.Contains("More")))
@@ -99,6 +100,9 @@ namespace RogueBot
 
                 Thread.Sleep(100);
                 lines = ConsoleController.ReadMap(console).Select(line => new string(line)).ToList();
+
+                if (stopwatch.Elapsed > TimeSpan.FromSeconds(2))
+                    break;
             }
 
             return lines;

@@ -12,15 +12,9 @@
         }
 
 
-        public static bool Start(Map map, int x, int y)
-        {
-            if (map.StatusLine == y) return false;
-            return Start(map.Maps, x, y);
-        }
-
         public static bool Start(char[][] maps, int x, int y)
         {
-            if (x < 0 || y < 0 || y > maps.Length || x > maps[y].Length)
+            if (x < 0 || y <= 0 || y >= 23 || x > maps[y].Length)
                 return false;
 
             // Assume ? is a monster

@@ -31,6 +31,13 @@ namespace RogueBot
             Monster monster = GetCloseMonster(player, currentMap);
             if (monster != null) return GetMoveTowards(player, monster.Position);
 
+            // Low on health?
+            if (player.Hp < player.HpMax / 2)
+            {
+                // Search while we wait
+                return C.Search;
+            }
+
             if (_searchTurnsRemaining > 0)
             {
                 _searchTurnsRemaining--;
@@ -49,7 +56,7 @@ namespace RogueBot
                 {
                     _visited[currentPos]++;
 
-                    if (_visited[currentPos] > 10)
+                    if (_visited[currentPos] > 3)
                     {
                         // We are stuck somewhere, start searching every other turn
                         _searchTurnsRemaining++;
@@ -78,7 +85,7 @@ namespace RogueBot
 
                 var room = map.Rooms.FirstOrDefault(r => r.Player != null);
 
-                if (currentChar == C.StairsDown)
+                if (currentChar == C.StairsDown && ReadyToMoveOn(map))
                 {
                     _visited = new();
                     _lastPositions = new();
@@ -98,11 +105,12 @@ namespace RogueBot
                         if (room.IsComplete(player))
                         {
                             Position leastVisitedDoor = null;
+                            int leastVisits = int.MaxValue;
                             foreach (var door in room.Doors)
                             {
                                 var pos = (door.X, door.Y);
                                 int visitCount = _visited.ContainsKey(pos) ? _visited[pos] : 0;
-                                if (leastVisitedDoor == null || visitCount < _visited.GetValueOrDefault((leastVisitedDoor.X, leastVisitedDoor.Y), 0))
+                                if (visitCount < leastVisits)
                                 {
                                     if (visitCount > 5)
                                     {
@@ -111,6 +119,7 @@ namespace RogueBot
                                     }
 
                                     leastVisitedDoor = door;
+                                    leastVisits = visitCount;
                                 }
                             }
 
@@ -189,7 +198,7 @@ namespace RogueBot
 
             Monster GetMonsterAt(int x, int y)
             {
-                if (Monster.Start(currentMap, x, y))
+                if (Monster.Start(maps, x, y))
                 {
                     return new Monster(new Position(x, y), maps[y][x]);
                 }
@@ -285,14 +294,14 @@ namespace RogueBot
             };
         }
 
-        private static bool CanMove(Player player, char move)
+        private bool CanMove(Player player, char move)
         {
             var p = player.Position;
             var next = GetNextPosition(p, move);
             return Walkable(player.Map, next);
         }
 
-        public static char GetMoveTowards(Player player, Position target)
+        public char GetMoveTowards(Player player, Position target)
         {
             var start = player.Position;
 
@@ -335,19 +344,30 @@ namespace RogueBot
             return Moves[Random.Shared.Next(Moves.Length)];
         }
 
-        public static bool Walkable(Map map, Position p)
+        public bool Walkable(Map map, Position p)
         {
             var x = p.X;
             var y = p.Y;
 
-            if (y < 0 || y > 22 || x < 0 || x >= map.Maps[0].Length || y == map.StatusLine)
+            if (y < 0 || y >= 23 || x < 0 || x >= map.Maps[0].Length)
                 return false;
 
             char c = map.Maps[y][x];
 
+            if (c == C.Trap)
+            {
+                // Only allowed to step on traps if we are stuck
+                if (_visited.TryGetValue((map.Player.X, map.Player.Y), out var value))
+                {
+                    if (value < 5)
+                    {
+                        return false;
+                    }
+                }
+            }
+
             return c != C.WallSide &&
                    c != C.WallTop &&
-                   c != C.Trap &&
                    !char.IsWhiteSpace(c);
         }
 

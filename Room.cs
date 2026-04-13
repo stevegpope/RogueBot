@@ -39,13 +39,13 @@ namespace RogueBot
                     {
                         Doors.Add(new Position(x, y));
                     }
-                    else if (Items.Start(maps, x, y))
-                    {
-                        ItemSet.Add(new Items(new Position(x, y), maps[y][x]));
-                    }
                     else if (Monster.Start(maps, x, y))
                     {
                         MonsterSet.Add(new Monster(new Position(x, y), maps[y][x]));
+                    }
+                    else if (Items.Start(maps, x, y))
+                    {
+                        ItemSet.Add(new Items(new Position(x, y), maps[y][x]));
                     }
                     else if (maps[y][x] == C.StairsDown)
                     {
@@ -101,6 +101,9 @@ namespace RogueBot
 
         public static bool Start(char[][] maps, int x, int y)
         {
+            if (x < 0 || y <= 0 || y >= 23 || x > maps[y].Length)
+                return false;
+
             char c = maps[y][x];
             char previous = x > 0 ? maps[y][x - 1] : C.Space;
             return c == C.WallTop && previous == C.Space;

@@ -5,7 +5,7 @@
         public static IEnumerable<InventoryItem> Get(nint console)
         {
             ConsoleController.SendKey(C.Inventory);
-            Thread.Sleep(100);
+            Thread.Sleep(250);
 
             var lines = ConsoleController.ReadMap(console).Select(line => new string(line)).ToList();
             var items = InventoryItem.Parse(lines);
@@ -18,6 +18,7 @@
             } 
 
             ConsoleController.SendKey(C.Space);
+            Thread.Sleep(250);
 
             return items;
         }

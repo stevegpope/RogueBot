@@ -1,7 +1,5 @@
 ﻿using System.Diagnostics;
-using System.Diagnostics.Metrics;
 using System.Text.RegularExpressions;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace RogueBot
 {
@@ -31,7 +29,6 @@ namespace RogueBot
         public string State { get; private set; }
 
         private readonly string[] States = new[] { "Hungry", "Weak", "Faint" };
-        private List<string> knownItems = new List<string>();
 
         private nint _console;
 
@@ -112,6 +109,11 @@ namespace RogueBot
 
             // Assume more powerful items are later
             var newItem = inventory.LastOrDefault(i => i.Name.Contains(itemType) && i.Status == null);
+            if (newItem == null)
+            {
+                Debug.WriteLine("Weird stuff, not there?");
+                return;
+            }
 
             switch (itemType)
             {
@@ -153,7 +155,7 @@ namespace RogueBot
 
         private void ReadScroll(InventoryItem? newItem)
         {
-            if (knownItems.Contains(newItem?.Name))
+            if (newItem.Name.Contains("scroll of ", StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
@@ -169,7 +171,7 @@ namespace RogueBot
 
         private void DrinkPotion(InventoryItem? newItem)
         {
-            if (knownItems.Contains(newItem?.Name))
+            if (newItem.Name.Contains("potion of ", StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
@@ -228,16 +230,15 @@ namespace RogueBot
         {
             Thread.Sleep(500);
 
-            var itemFullName = itemType + " " + Random.Shared.NextDouble();
+            var itemFullName = itemType + " of " + Random.Shared.NextDouble();
 
             var map = new Map(ConsoleController.ReadMap(_console));
-            while (map.HasString("more"))
+            if (map.HasString("more"))
             {
                 var itemName = Items.ParseItemName(map.Details);
                 if (itemName != null)
                 {
                     itemFullName = $"{itemType} of {itemName}";
-                    knownItems.Add(itemFullName);
                 }
 
                 Debug.WriteLine("MORE");
@@ -292,7 +293,7 @@ namespace RogueBot
                     Debug.WriteLine("Choose item to ID");
                     if (items.Any())
                     {
-                        var item = items.First();
+                        var item = items.Last();
                         ConsoleController.SendKey(item.Letter);
                         Debug.WriteLine("Finish up");
                         FinishUsingItem(item.Name);
