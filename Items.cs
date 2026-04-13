@@ -16,7 +16,7 @@
             if (x < 0 || y <= 0 || y >= 23 || x > maps[y].Length)
                 return false;
 
-            var itemCodes = new[] { C.Money, C.Wand, C.Ring, C.Potion, C.Goal, C.Armor, C.Food, C.Weapon };
+            var itemCodes = new[] { C.Money, C.Wand, C.Ring, C.Potion, C.Goal, C.Armor, C.Food, C.Weapon, C.Unknown };
             return itemCodes.Contains(maps[y][x]);
         }
 

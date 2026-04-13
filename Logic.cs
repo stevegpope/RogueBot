@@ -29,7 +29,29 @@ namespace RogueBot
 
             // Are we under attack?
             Monster monster = GetCloseMonster(player, currentMap);
-            if (monster != null) return GetMoveTowards(player, monster.Position);
+            if (monster != null)
+            {
+                // Low on health
+                if (player.Hp < player.HpMax / 2)
+                {
+                    // Get the hell out of there
+                    var scroll = player.InventoryItems.FirstOrDefault(i => i.Name.Contains("scroll of teleport", StringComparison.OrdinalIgnoreCase));
+                    if (scroll != null)
+                    {
+                        player.ReadScroll(scroll);
+                        return C.Search;
+                    }
+
+                    // Heal up and continue the fight
+                    var potion = player.InventoryItems.FirstOrDefault(i => i.IsPotion && i.Name.Contains("healing", StringComparison.OrdinalIgnoreCase));
+                    if (potion != null)
+                    {
+                        player.QuaffPotion(potion);
+                    }
+                }
+
+                return GetMoveTowards(player, monster.Position);
+            }
 
             // Low on health?
             if (player.Hp < player.HpMax / 2)
@@ -49,24 +71,6 @@ namespace RogueBot
 
             try
             {
-
-                // Mark current position visited
-                var currentPos = (player.Position.X, player.Position.Y);
-                if (_visited.ContainsKey(currentPos))
-                {
-                    _visited[currentPos]++;
-
-                    if (_visited[currentPos] > 3)
-                    {
-                        // We are stuck somewhere, start searching every other turn
-                        _searchTurnsRemaining++;
-                    }
-                }
-                else
-                {
-                    _visited[currentPos] = 1;
-                }
-
                 char? currentChar = null;
                 if (_previousMap != null && _previousMove != C.DownStairs)
                 {
@@ -97,6 +101,36 @@ namespace RogueBot
                     var target = ChooseRoomTarget(player, room);
                     if (target != null)
                     {
+                        // Get out of here unless we have no choice
+                        var visits = 0;
+                        _visited.TryGetValue((player.Position.X, player.Position.Y), out visits);
+
+                        if (room.MonsterSet.Count > 1 && visits < 3)
+                        {
+                            Debug.WriteLine("Too many monsters, run!!");
+                            move = Flee(player, room.MonsterSet.First());
+                        }
+                        else if (room.MonsterSet.Count > 0)
+                        {
+                            var previousRoom = _previousMap?.Rooms.FirstOrDefault(r => r.Player != null);
+                            if (previousRoom != null)
+                            {
+                                var previousMonster = previousRoom.MonsterSet.FirstOrDefault();
+                                monster = room.MonsterSet.First();
+                                if (previousMonster?.Position != monster?.Position)
+                                {
+                                    Debug.WriteLine("Waiting for monster to come to us");
+                                    return C.Rest;
+                                }
+                            }
+                            else
+                            {
+                                // Single monster, see if he comes to us (then we get first strike)
+                                Debug.WriteLine("Check if monster will come to us");
+                                return C.Rest;
+                            }
+                        }
+
                         move = GetMoveTowards(player, target);
                     }
                     else if (currentChar != C.Door)
@@ -133,6 +167,23 @@ namespace RogueBot
             }
             finally
             {
+                // Mark current position visited
+                var currentPos = (player.Position.X, player.Position.Y);
+                if (player.Position != _previousPosition && _visited.ContainsKey(currentPos))
+                {
+                    _visited[currentPos]++;
+
+                    if (_visited[currentPos] > 3 && NearWall(player))
+                    {
+                        // We are stuck somewhere, start searching every other turn
+                        _searchTurnsRemaining++;
+                    }
+                }
+                else
+                {
+                    _visited[currentPos] = 1;
+                }
+
                 _previousMove = move;
                 _previousPosition = player.Position;
 
@@ -148,6 +199,64 @@ namespace RogueBot
             }
 
             return move;
+        }
+
+        private bool NearWall(Player player)
+        {
+            var map = player.Map;
+            var p = player.Position;
+            var wallCount = 0;
+            for (int x = p.X - 1; x <= p.X + 1; x++)
+            {
+                for (int y = p.Y - 1; y <= p.Y + 1; y++)
+                {
+                    if (x < 0 || y < 0 || y >= map.Maps.Length || x >= map.Maps[y].Length)
+                        continue;
+
+                    char c = map.Maps[y][x];
+                    if (c == C.WallSide || c == C.WallTop || c == C.Space)
+                    {
+                        wallCount++;
+                    }
+                }
+            }
+
+            // Wall count = 0, middle of a room
+            // Wall count = 1, wall side
+            // Wall count = 2, door or double-ended path
+            // Wall count = 3, corner or dead end
+            return wallCount == 1 || wallCount == 3;
+        }
+
+        private char Flee(Player player, Monster monster)
+        {
+            // Try to move in the opposite direction of the monster
+            var map = player.Map;
+            var playerPos = map.Player;
+
+            var room = map.Rooms.FirstOrDefault(r => r.Player != null);
+            if (room != null)
+            {
+                // Try to find a door that leads away from the monster
+                Position bestDoor = null;
+                foreach (var door in room.Doors)
+                {
+                    var distanceToMonster = Math.Sqrt(Math.Pow(monster.Position.X - door.X, 2) + Math.Pow(monster.Position.Y - door.Y, 2));
+                    var distanceToPlayer = Math.Sqrt(Math.Pow(playerPos.X - door.X, 2) + Math.Pow(playerPos.Y - door.Y, 2));
+                    if (distanceToMonster > distanceToPlayer)
+                    {
+                        bestDoor = door;
+                        break;
+                    }
+                }
+
+                if (bestDoor != null)
+                {
+                    return GetMoveTowards(player, bestDoor);
+                }
+            }
+
+            return RunAwayFromMonster(player, monster.Position);
         }
 
         private Position ChooseRoomTarget(Player player, Room room)
@@ -187,7 +296,7 @@ namespace RogueBot
             }
 
             // Backup, just in case there are not enough rooms
-            var beenEveryWhereTwice = _visited.All(v => v.Value > 1);
+            var beenEveryWhereTwice = _visited.Count > 4 && _visited.All(v => v.Value > 1);
 
             return visitedRooms >= 5 || beenEveryWhereTwice;
         }
@@ -279,6 +388,11 @@ namespace RogueBot
                 }
             }
 
+            if (bestMove == C.Search)
+            {
+                Debug.WriteLine("serach");
+            }
+
             return bestMove;
         }
 
@@ -342,6 +456,49 @@ namespace RogueBot
 
             // Random walkable move
             return Moves[Random.Shared.Next(Moves.Length)];
+        }
+
+        public char RunAwayFromMonster(Player player, Position monster)
+        {
+            var start = player.Position;
+
+            var validMoves = new List<char>();
+
+            var left = false;
+            var right = false;
+            var up = false;
+            var down = false;
+
+            // Simple greedy movement
+            if (monster.X <= start.X)
+            {
+                right = true;
+            }
+            if (monster.X >= start.X)
+            {
+                left = true;
+            }
+            if (monster.Y >= start.Y)
+            {
+                up = true;
+            }
+            if (monster.Y <= start.Y)
+            {
+                down = true;
+            }
+
+            if (left && Walkable(player.Map, GetNextPosition(start, C.Left))) validMoves.Add(C.Left);
+            if (right && Walkable(player.Map, GetNextPosition(start, C.Right))) validMoves.Add(C.Right);
+            if (up && Walkable(player.Map, GetNextPosition(start, C.Up))) validMoves.Add(C.Up);
+            if (down && Walkable(player.Map, GetNextPosition(start, C.Down))) validMoves.Add(C.Down);
+
+            if (validMoves.Any())
+            {
+                return validMoves[Random.Shared.Next(validMoves.Count)];
+            }
+
+            // Stuck, go at him!
+            return GetMoveTowards(player, monster);
         }
 
         public bool Walkable(Map map, Position p)

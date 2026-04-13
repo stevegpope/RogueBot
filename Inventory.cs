@@ -2,7 +2,7 @@
 {
     internal class Inventory
     {
-        public static IEnumerable<InventoryItem> Get(nint console)
+        public static List<InventoryItem> Get(nint console)
         {
             ConsoleController.SendKey(C.Inventory);
             Thread.Sleep(250);

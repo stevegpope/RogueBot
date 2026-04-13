@@ -3,6 +3,7 @@
     public static class C
     {
         // Map
+        public const char Unknown = '?';
         public const char Space = ' ';
         public const char Door = '+';
         public const char Floor = '.';

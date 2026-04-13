@@ -27,6 +27,7 @@ namespace RogueBot
         public Position Position { get; private set; }
         public Map Map { get; private set; }
         public string State { get; private set; }
+        public List<InventoryItem> InventoryItems { get; private set; }
 
         private readonly string[] States = new[] { "Hungry", "Weak", "Faint" };
 
@@ -49,15 +50,25 @@ namespace RogueBot
             if (CheckedForFoodLast.AddSeconds(5) > DateTime.Now)
                 return;
 
+            Thread.Sleep(500);
+            InventoryItems = Inventory.Get(_console);
+
             try
             {
-                var inventory = Inventory.Get(_console);
-
-                foreach (var item in inventory)
+                foreach (var item in InventoryItems)
                 {
                     if (item.IsFood)
                     {
-                        EatItem(item);
+                        if (item.IsPotion)
+                        {
+                            // Food potion. Yes, really.
+                            QuaffPotion(item);
+                        }
+                        else
+                        {
+                            EatItem(item);
+                        }
+
                         return;
                     }
                 }
@@ -73,6 +84,7 @@ namespace RogueBot
             ConsoleController.WaitForTurnReady(_console);
 
             ConsoleController.SendKey(C.Eat);
+            Thread.Sleep(1000);
 
             var lines = ConsoleController.WaitForText(_console, "eat?");
 
@@ -81,6 +93,7 @@ namespace RogueBot
 
         internal void Use(string foundStr)
         {
+            Debug.WriteLine($"Try to use {foundStr}");
             var searchTerms = new[] { "ring", "sword", "potion", "scroll", "mail" };
             string itemType = null;
             foreach (var searchTerm in searchTerms)
@@ -105,26 +118,32 @@ namespace RogueBot
                 return;
 
             Debug.WriteLine($"Use found {itemType} in '{foundStr}'");
-            var inventory = Inventory.Get(_console);
+            InventoryItems = Inventory.Get(_console);
 
             // Assume more powerful items are later
-            var newItem = inventory.LastOrDefault(i => i.Name.Contains(itemType) && i.Status == null);
+            var newItem = InventoryItems.LastOrDefault(i => i.Name.Contains(itemType) && i.Status == null);
             if (newItem == null)
             {
                 Debug.WriteLine("Weird stuff, not there?");
                 return;
             }
 
+            if (newItem.Identified && (newItem.Name.Contains("potion") || newItem.Name.Contains("scroll")))
+            {
+                // Do not use known consumables
+                return;
+            }
+
             switch (itemType)
             {
                 case "ring":
-                    WearRing(newItem, inventory);
+                    WearRing(newItem);
                     break;
                 case "sword":
                     WieldSword(newItem);
                     break;
                 case "potion":
-                    DrinkPotion(newItem);
+                    QuaffPotion(newItem);
                     break;
                 case "scroll":
                     ReadScroll(newItem); 
@@ -153,35 +172,27 @@ namespace RogueBot
             FinishUsingItem("armor");
         }
 
-        private void ReadScroll(InventoryItem? newItem)
+        internal void ReadScroll(InventoryItem? newItem)
         {
-            if (newItem.Name.Contains("scroll of ", StringComparison.OrdinalIgnoreCase))
-            {
-                return;
-            }
-
             Debug.WriteLine($"Trying to read {newItem.Name} ({newItem.Letter})");
 
             ConsoleController.SendKey(C.ReadScroll);
             ConsoleController.WaitForText(_console, "Which object");
 
             ConsoleController.SendKey(newItem.Letter);
+            InventoryItems.Remove(newItem);
             FinishUsingItem("scroll");
         }
 
-        private void DrinkPotion(InventoryItem? newItem)
+        internal void QuaffPotion(InventoryItem? newItem)
         {
-            if (newItem.Name.Contains("potion of ", StringComparison.OrdinalIgnoreCase))
-            {
-                return;
-            }
-
             Debug.WriteLine($"Trying to quaff {newItem.Name} ({newItem.Letter})");
 
             ConsoleController.SendKey(C.QuaffPotion);
             ConsoleController.WaitForText(_console, "Which object");
 
             ConsoleController.SendKey(newItem.Letter);
+            InventoryItems.Remove(newItem);
             FinishUsingItem("potion");
         }
 
@@ -196,13 +207,13 @@ namespace RogueBot
             FinishUsingItem("sword");
         }
 
-        private void WearRing(InventoryItem newItem, IEnumerable<InventoryItem> inventory)
+        private void WearRing(InventoryItem newItem)
         {
             Debug.WriteLine($"Trying to wear ring {newItem.Name} ({newItem.Letter})");
 
             // Look for open ring slot
-            var left = inventory.FirstOrDefault(i => i.Status?.Contains("left hand") == true);
-            var right = inventory.FirstOrDefault(i => i.Status?.Contains("right hand") == true);
+            var left = InventoryItems.FirstOrDefault(i => i.Status?.Contains("left hand") == true);
+            var right = InventoryItems.FirstOrDefault(i => i.Status?.Contains("right hand") == true);
             if (left != null && right != null)
             {
                 ConsoleController.SendKey(C.Remove);
@@ -307,16 +318,17 @@ namespace RogueBot
         
         internal void InventoryCheck()
         {
-            var inventory = Inventory.Get(_console);
-            var currentArmor = inventory.FirstOrDefault(i => i.IsArmor && i.Status != null);
+            InventoryItems = Inventory.Get(_console);
+            var currentArmor = InventoryItems.FirstOrDefault(i => i.IsArmor && i.Status != null);
 
-            foreach (var item in inventory)
+            var items = new List<InventoryItem>(InventoryItems);
+            foreach (var item in items)
             {
-                if (item.Name.Contains("potion"))
+                if (item.Name.Contains("potion") && !item.Identified)
                 {
-                    DrinkPotion(item);
+                    QuaffPotion(item);
                 }
-                else if (item.Name.Contains("scroll"))
+                else if (item.Name.Contains("scroll") && !item.Identified)
                 {
                     ReadScroll(item);
                 }
@@ -326,7 +338,7 @@ namespace RogueBot
                 }
                 else if (item.IsRing && item.Status == null)
                 {
-                    WearRing(item, inventory);
+                    WearRing(item);
                 }
                 else if (item.IsArmor && item.Status == null)
                 {

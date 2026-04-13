@@ -106,7 +106,19 @@ namespace RogueBot
 
             char c = maps[y][x];
             char previous = x > 0 ? maps[y][x - 1] : C.Space;
-            return c == C.WallTop && previous == C.Space;
+            char under = y < maps.Length - 1 ? maps[y + 1][x] : C.Space;
+            if (under == C.WallSide || under == C.Door)
+            {
+                if (c == C.WallTop)
+                {
+                    if (previous == C.Space || previous == C.Path)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         internal bool IsComplete(Player player)

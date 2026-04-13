@@ -42,6 +42,17 @@ namespace RogueBot
             }
         }
 
+        public bool Identified
+        {
+            get
+            {
+                return Name.Contains("potion of ") ||
+                    Name.Contains("ring of ") ||
+                    Name.Contains("wand of ") ||
+                    Name.Contains("scroll of ");
+            }
+        }
+
         private static readonly Regex ProtectionRegex =
             new Regex(@"\[protection\s+(?<value>-?\d+)\]", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
@@ -54,6 +65,14 @@ namespace RogueBot
                     return 0;
 
                 return int.Parse(match.Groups["value"].Value);
+            }
+        }
+
+        public bool IsPotion
+        {
+            get
+            {
+                return Name.Contains("potion", StringComparison.OrdinalIgnoreCase);
             }
         }
 

@@ -17,8 +17,7 @@
             if (x < 0 || y <= 0 || y >= 23 || x > maps[y].Length)
                 return false;
 
-            // Assume ? is a monster
-            return char.IsAsciiLetter(maps[y][x]) || maps[y][x] == '?';
+            return char.IsAsciiLetter(maps[y][x]);
         }
     }
 }
