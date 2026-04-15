@@ -27,6 +27,10 @@
         public const char Down = 'j';
         public const char Up = 'k';
         public const char Right = 'l';
+        public const char UpLeft = 'y';
+        public const char UpRight = 'u';
+        public const char DownLeft = 'b';
+        public const char DownRight = 'n';
         public const char Rest = '.';
         public const char Enter = '\r';
         public const char DownStairs = '>';

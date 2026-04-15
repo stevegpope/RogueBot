@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
 
 namespace RogueBot
 {
@@ -43,6 +44,7 @@ namespace RogueBot
                 var combatMove = ChooseCombatMove(player, map);
                 if (combatMove != C.Unknown)
                 {
+                    _previousMove = combatMove;
                     return combatMove;
                 }
             }
@@ -121,7 +123,7 @@ namespace RogueBot
                         if (room.MonsterSet.Count > 0)
                         {
                             StartCombat(room.MonsterSet.First());
-                            return ChooseMove(player, map);
+                            return ChooseCombatMove(player, map);
                         }
 
                         move = GetMoveTowards(player, target);
@@ -210,7 +212,10 @@ namespace RogueBot
             if (finishMessages.Any(m => map.Details.Contains(m, StringComparison.OrdinalIgnoreCase)))
             {
                 EndCombat();
-                return C.Unknown;
+
+                // One more move in that direction to get us into the door again
+                // to continue exploring
+                return _previousMove.Value;
             }
 
             // If there is a monster next to us fight no matter what
@@ -421,15 +426,11 @@ namespace RogueBot
                 double minDistanceToDoor = double.MaxValue;
                 foreach (var door in room.Doors)
                 {
-                    var distanceToMonster = Math.Sqrt(Math.Pow(monster.Position.X - door.X, 2) + Math.Pow(monster.Position.Y - door.Y, 2));
                     var distanceToPlayer = Math.Sqrt(Math.Pow(playerPos.X - door.X, 2) + Math.Pow(playerPos.Y - door.Y, 2));
-                    if (distanceToMonster > distanceToPlayer)
+                    if (distanceToPlayer < minDistanceToDoor)
                     {
-                        if (distanceToPlayer < minDistanceToDoor)
-                        {
-                            bestDoor = door;
-                            minDistanceToDoor = distanceToPlayer;
-                        }
+                        bestDoor = door;
+                        minDistanceToDoor = distanceToPlayer;
                     }
                 }
 
@@ -472,7 +473,7 @@ namespace RogueBot
             var visitedRooms = 0;
             foreach (var room in map.Rooms)
             {
-                if (room.IsComplete(map.Maps) && room.Doors.Any(d => _visited.ContainsKey((d.X, d.Y))))
+                if (room.IsComplete(map.Maps) && (room.Doors.Count == 0 || room.Doors.Any(d => _visited.ContainsKey((d.X, d.Y)))))
                 {
                     visitedRooms++;
                 }
@@ -606,6 +607,20 @@ namespace RogueBot
             var up = new Position(p.X, p.Y - 1);
             var down = new Position(p.X, p.Y + 1);
 
+            var upLeft = new Position(p.X - 1, p.Y - 1);
+            var upRight = new Position(p.X + 1, p.Y - 1);
+            var downLeft = new Position(p.X - 1, p.Y + 1);
+            var downRight = new Position(p.X + 1, p.Y + 1);
+
+            // Optimization, if we are on . we can move to . diagonally
+            if (_currentChar == C.Floor)
+            {
+                if (target.X < p.X && target.Y < p.Y && map.Maps[upLeft.Y][upLeft.X] == C.Floor) return C.UpLeft;
+                if (target.X > p.X && target.Y < p.Y && map.Maps[upRight.Y][upRight.X] == C.Floor) return C.UpRight;
+                if (target.X < p.X && target.Y > p.Y && map.Maps[downLeft.Y][downLeft.X] == C.Floor) return C.DownLeft;
+                if (target.X > p.X && target.Y > p.Y && map.Maps[downRight.Y][downRight.X] == C.Floor) return C.DownRight;
+            }
+
             // Simple greedy movement
             if (target.X < p.X && Walkable(map, left)) validMoves.Add(C.Left);
             if (target.X > p.X && Walkable(map, right)) validMoves.Add(C.Right);
@@ -687,7 +702,7 @@ namespace RogueBot
                 // Only allowed to step on traps if we are stuck
                 if (_visited.TryGetValue((map.Player.X, map.Player.Y), out var value))
                 {
-                    if (value < 5)
+                    if (value < 10)
                     {
                         return false;
                     }
