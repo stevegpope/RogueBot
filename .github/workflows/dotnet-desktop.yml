@@ -16,30 +16,57 @@ jobs:
 
     env:
       Solution_Name: RogueBot.sln
+      Project_Name: RogueBot   # your .csproj name (without extension)
 
     steps:
     - name: Checkout
       uses: actions/checkout@v4
 
-    # Install .NET 10 (preview required)
-    - name: Install .NET 10
+    - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 10.0.x
-        include-prerelease: true
 
-    # Restore
+    # Create a version number like 1.0.123
+    - name: Set version
+      id: version
+      run: echo "VERSION=1.0.${{ github.run_number }}" >> $env:GITHUB_ENV
+
     - name: Restore
       run: dotnet restore $env:Solution_Name
 
-    # Build
-    - name: Build
-      run: dotnet build $env:Solution_Name --configuration $env:Configuration --no-restore
+    - name: Publish (single-file exe)
+      run: >
+        dotnet publish $env:Solution_Name
+        -c $env:Configuration
+        -r win-x64
+        --self-contained true
+        /p:PublishSingleFile=true
+        /p:IncludeNativeLibrariesForSelfExtract=true
+        /p:Version=$env:VERSION
+        -o publish
       env:
         Configuration: ${{ matrix.configuration }}
 
-    # Publish
-    - name: Publish
-      run: dotnet publish $env:Solution_Name --configuration $env:Configuration --output ./publish
+    # Rename EXE to include version (nice for downloads)
+    - name: Rename EXE with version
+      run: |
+        $exe = Get-ChildItem -Path publish -Filter "*.exe" | Select-Object -First 1
+        Rename-Item $exe.FullName "$env:Project_Name-$env:VERSION.exe"
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: RogueBot-${{ env.VERSION }}
+        path: publish
+
+    # Create GitHub Release (only on main push, not PR)
+    - name: Create Release
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ env.VERSION }}
+        name: RogueBot v${{ env.VERSION }}
+        files: publish/*.exe
       env:
-        Configuration: ${{ matrix.configuration }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
