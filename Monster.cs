@@ -2,7 +2,7 @@
 {
     public class Monster
     {
-        public Position Position { get; }
+        public Position Position { get; set; }
         public char MonsterCode { get; }
 
         public Monster(Position position, char code)

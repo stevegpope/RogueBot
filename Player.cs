@@ -384,5 +384,18 @@ namespace RogueBot
 
             Position = Map.Player;
         }
+
+        internal void ThrowItem(InventoryItem item, char direction)
+        {
+            Debug.WriteLine($"Throw ${item.Name} at ${direction}");
+            ConsoleController.SendKey(C.Throw);
+            Thread.Sleep(500);
+
+            ConsoleController.SendKey(direction);
+            Thread.Sleep(500);
+
+            ConsoleController.SendKey(item.Letter);
+            Thread.Sleep(500);
+        }
     }
 }

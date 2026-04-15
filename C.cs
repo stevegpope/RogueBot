@@ -40,5 +40,6 @@
         public const char ReadScroll = 'r';
         public const char WearArmor = 'W';
         public const char TakeOff = 'T';
+        public const char Throw = 't';
     }
 }

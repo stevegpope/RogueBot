@@ -121,12 +121,11 @@ namespace RogueBot
             return false;
         }
 
-        internal bool IsComplete(Player player)
+        internal bool IsComplete(char[][] map)
         {
             // A room is complete if all the walls and doors have been discovered
             var startX = TopLeft.X;
             var startY = TopLeft.Y;
-            var map = player.Map.Maps;
 
             // Top
             for (var x = startX; x < startX + Width; x++)

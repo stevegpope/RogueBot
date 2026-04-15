@@ -6,17 +6,21 @@ namespace RogueBot
     {
         private char? _previousMove = null;
         public Position _previousPosition = null;
-        private Map _previousMap;
-        private Room _startRoom;
-
+        private Map _previousMap = null;
+        private Position _lastDeadEnd = null;
         private int _searchTurnsRemaining = 0;
-        private DateTime LastRest = DateTime.MinValue;
 
         // Track explored tiles
         public static Dictionary<(int x, int y), int> _visited = new();
 
         // Track recent positions (anti-oscillation)
         private Queue<(int x, int y)> _lastPositions = new();
+        private bool _combat;
+        private Monster _targetMonster;
+        private int _turnsLeftToWaitForFight;
+        private bool _doneWaitingForMonsters;
+        private char _currentChar;
+        private bool _startWaitingForMonsters;
         private const int HistorySize = 50000;
         private static readonly char[] Moves = new[] { C.Up, C.Down, C.Left, C.Right };
 
@@ -26,6 +30,22 @@ namespace RogueBot
 
             if (map.HasString("more"))
                 return C.Space;
+
+            _currentChar = C.Unknown;
+            if (_previousMap != null && _previousMove != C.DownStairs)
+            {
+                _currentChar = _previousMap.Maps[player.Position.Y][player.Position.X];
+            }
+
+            // In combat?
+            if (_combat)
+            {
+                var combatMove = ChooseCombatMove(player, map);
+                if (combatMove != C.Unknown)
+                {
+                    return combatMove;
+                }
+            }
 
             // Are we under attack?
             Monster monster = GetCloseMonster(player, currentMap);
@@ -54,7 +74,7 @@ namespace RogueBot
             }
 
             // Low on health?
-            if (player.Hp < player.HpMax / 2)
+            if (player.Hp < player.HpMax * 0.75)
             {
                 // Search while we wait
                 return C.Search;
@@ -71,12 +91,6 @@ namespace RogueBot
 
             try
             {
-                char? currentChar = null;
-                if (_previousMap != null && _previousMove != C.DownStairs)
-                {
-                    currentChar = _previousMap.Maps[player.Position.Y][player.Position.X];
-                }
-
                 if (player.Hungry())
                 {
                     player.Eat();
@@ -89,7 +103,7 @@ namespace RogueBot
 
                 var room = map.Rooms.FirstOrDefault(r => r.Player != null);
 
-                if (currentChar == C.StairsDown && ReadyToMoveOn(map))
+                if (_currentChar == C.StairsDown && ReadyToMoveOn(map))
                 {
                     _visited = new();
                     _lastPositions = new();
@@ -101,42 +115,21 @@ namespace RogueBot
                     var target = ChooseRoomTarget(player, room);
                     if (target != null)
                     {
-                        // Get out of here unless we have no choice
                         var visits = 0;
                         _visited.TryGetValue((player.Position.X, player.Position.Y), out visits);
 
-                        if (room.MonsterSet.Count > 1 && visits < 3)
+                        if (room.MonsterSet.Count > 0)
                         {
-                            Debug.WriteLine("Too many monsters, run!!");
-                            move = Flee(player, room.MonsterSet.First());
-                        }
-                        else if (room.MonsterSet.Count > 0)
-                        {
-                            var previousRoom = _previousMap?.Rooms.FirstOrDefault(r => r.Player != null);
-                            if (previousRoom != null)
-                            {
-                                var previousMonster = previousRoom.MonsterSet.FirstOrDefault();
-                                monster = room.MonsterSet.First();
-                                if (previousMonster?.Position != monster?.Position)
-                                {
-                                    Debug.WriteLine("Waiting for monster to come to us");
-                                    return C.Rest;
-                                }
-                            }
-                            else
-                            {
-                                // Single monster, see if he comes to us (then we get first strike)
-                                Debug.WriteLine("Check if monster will come to us");
-                                return C.Rest;
-                            }
+                            StartCombat(room.MonsterSet.First());
+                            return ChooseMove(player, map);
                         }
 
                         move = GetMoveTowards(player, target);
                     }
-                    else if (currentChar != C.Door)
+                    else if (_currentChar != C.Door)
                     {
                         // Go to the least visited Door if the room is complete
-                        if (room.IsComplete(player))
+                        if (room.IsComplete(currentMap.Maps))
                         {
                             Position leastVisitedDoor = null;
                             int leastVisits = int.MaxValue;
@@ -201,6 +194,192 @@ namespace RogueBot
             return move;
         }
 
+        private void StartCombat(Monster monster)
+        {
+            _combat = true;
+            _targetMonster = monster;
+            _doneWaitingForMonsters = false;
+            _turnsLeftToWaitForFight = 0;
+            _startWaitingForMonsters = true;
+        }
+
+        private char ChooseCombatMove(Player player, Map map)
+        {
+            // Last known position will have to do
+            var finishMessages = new[] { "defeated", "level" };
+            if (finishMessages.Any(m => map.Details.Contains(m, StringComparison.OrdinalIgnoreCase)))
+            {
+                EndCombat();
+                return C.Unknown;
+            }
+
+            // If there is a monster next to us fight no matter what
+            var monster = GetCloseMonster(player, map);
+            if (monster != null)
+            {
+                Debug.WriteLine("Fight!");
+                return GetMoveTowards(player, monster.Position);
+            }
+
+            monster = GetTargetMonster(player);
+
+            // Are we in a good position? A path prevents us from getting attacked from more than one monster.
+            var inFightPosition = Near(player, C.Path) && _currentChar != C.Door; 
+
+            if (inFightPosition)
+            {
+                if (_startWaitingForMonsters)
+                {
+                    // Give them a little time to come to us
+                    _turnsLeftToWaitForFight = (int)Math.Ceiling(CalculateDistance(player, monster.Position)) + 3;
+                    _startWaitingForMonsters = false;
+
+                    return C.Search;
+                }
+                else if (_turnsLeftToWaitForFight > 0)
+                {
+                    _turnsLeftToWaitForFight--;
+                    return C.Search;
+                }
+                else
+                {
+                    // They are not coming to us, we must go to them
+                    _doneWaitingForMonsters = true;
+                    return GetMoveTowards(player, monster.Position);
+                }
+            }
+            else
+            {
+                if (_doneWaitingForMonsters)
+                {
+                    if (player.Position == _targetMonster.Position)
+                    {
+                        // Maybe he moved?
+                        EndCombat();
+                        return C.Unknown;
+                    }
+
+                    // If we can, throw something at the monster to make him mad
+                    if (LinedUp(player, _targetMonster.Position))
+                    {
+                        player.InventoryCheck();
+                        var item = GetSomethingToThrow(player);
+                        player.ThrowItem(item, GetDirection(player, _targetMonster.Position));
+
+                        StartCombat(_targetMonster);
+                        return ChooseCombatMove(player, map);
+                    }
+                    else
+                    {
+                        return GetMoveTowards(player, _targetMonster.Position);
+                    }
+                }
+                else
+                {
+                    var room = map.Rooms.FirstOrDefault(r => r.Player != null);
+                    if (_currentChar == C.Door || room != null && room.Doors.Count > 0)
+                    {
+                        // Move to the nearest door away from the monster. If there are more monsters we may be screwed
+                        return Flee(player, _targetMonster);
+                    }
+                    else
+                    {
+                        return GetMoveTowards(player, _targetMonster.Position);
+                    }
+                }
+            }
+
+            return C.Unknown;
+        }
+
+        private Monster GetTargetMonster(Player player)
+        {
+            if (_targetMonster == null)
+            {
+                return null;
+            }
+
+            var maps = player.Map.Maps;
+
+            // Look for the monster with the same letter spreading outward from his original position
+            int add = 0;
+            while (add++ < 15)
+            {
+                for (int y = 0; y <= add; y++)
+                {
+                    for (var x = 0; x <= add; x++)
+                    {
+                        if (maps[y][x] == _targetMonster.MonsterCode)
+                        {
+                            _targetMonster.Position = new Position(x, y);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return _targetMonster;
+        }
+
+        private char GetDirection(Player player, Position position)
+        {
+            var p = player.Position;
+            if (p.X < position.X) return C.Right;
+            if (p.X > position.X) return C.Left;
+            if (p.Y < position.Y) return C.Down;
+            if (p.Y > position.Y) return C.Up;
+
+            return C.Unknown;
+        }
+
+        private bool LinedUp(Player player, Position position)
+        {
+            return player.Position.X == position.X || player.Position.Y == position.Y;
+        }
+
+        private InventoryItem GetSomethingToThrow(Player player)
+        {
+            InventoryItem throwable = null;
+            var throwables = new[] { "spear", "arrow", "wand", "staff", "bow" };
+            foreach (var item in throwables)
+            {
+                throwable = player.InventoryItems.FirstOrDefault(i => i.Name.Contains(item, StringComparison.OrdinalIgnoreCase));
+                if (throwable != null) break;
+            }
+
+            return throwable;
+        }
+
+        private void EndCombat()
+        {
+            _targetMonster = null;
+            _combat = false;
+            _doneWaitingForMonsters = false;
+        }
+
+        private double CalculateDistance(Player player, Position position)
+        {
+            return Math.Sqrt(Math.Pow(player.Position.X - position.X, 2) + Math.Pow(player.Position.Y - position.Y, 2));
+        }
+
+        private bool Near(Player player, char character)
+        {
+            var map = player.Map;
+            var p = player.Position;
+
+            var left = new Position(p.X - 1, p.Y);
+            var right = new Position(p.X + 1, p.Y);
+            var up = new Position(p.X, p.Y - 1);
+            var down = new Position(p.X, p.Y + 1);
+
+            if (Walkable(map, left) && map.Maps[left.Y][left.X] == character) return true;
+            if (Walkable(map, right) && map.Maps[right.Y][right.X] == character) return true;
+            if (Walkable(map, up) && map.Maps[up.Y][up.X] == character) return true;
+            if (Walkable(map, down) && map.Maps[down.Y][down.X] == character) return true;
+
+            return false;
+        }
+
         private bool NearWall(Player player)
         {
             var map = player.Map;
@@ -235,18 +414,22 @@ namespace RogueBot
             var playerPos = map.Player;
 
             var room = map.Rooms.FirstOrDefault(r => r.Player != null);
-            if (room != null)
+            if (room != null && _currentChar != C.Door)
             {
                 // Try to find a door that leads away from the monster
                 Position bestDoor = null;
+                double minDistanceToDoor = double.MaxValue;
                 foreach (var door in room.Doors)
                 {
                     var distanceToMonster = Math.Sqrt(Math.Pow(monster.Position.X - door.X, 2) + Math.Pow(monster.Position.Y - door.Y, 2));
                     var distanceToPlayer = Math.Sqrt(Math.Pow(playerPos.X - door.X, 2) + Math.Pow(playerPos.Y - door.Y, 2));
                     if (distanceToMonster > distanceToPlayer)
                     {
-                        bestDoor = door;
-                        break;
+                        if (distanceToPlayer < minDistanceToDoor)
+                        {
+                            bestDoor = door;
+                            minDistanceToDoor = distanceToPlayer;
+                        }
                     }
                 }
 
@@ -289,7 +472,7 @@ namespace RogueBot
             var visitedRooms = 0;
             foreach (var room in map.Rooms)
             {
-                if (room.Doors.Any(d => _visited.ContainsKey((d.X, d.Y))))
+                if (room.IsComplete(map.Maps) && room.Doors.Any(d => _visited.ContainsKey((d.X, d.Y))))
                 {
                     visitedRooms++;
                 }
@@ -303,40 +486,36 @@ namespace RogueBot
 
         private Monster GetCloseMonster(Player player, Map currentMap)
         {
-            var maps = currentMap.Maps;
+            var maps = player.Map.Maps;
+            var p = player.Position;
 
-            Monster GetMonsterAt(int x, int y)
+            var left = new Position(p.X - 1, p.Y);
+            var right = new Position(p.X + 1, p.Y);
+            var up = new Position(p.X, p.Y - 1);
+            var down = new Position(p.X, p.Y + 1);
+
+            Monster GetMonsterAt(Position position)
             {
-                if (Monster.Start(maps, x, y))
+                if (Monster.Start(maps, position.X, position.Y))
                 {
-                    return new Monster(new Position(x, y), maps[y][x]);
+                    return new Monster(new Position(position.X, position.Y), maps[position.Y][position.X]);
                 }
 
                 return null;
             }
 
-            var monster = GetMonsterAt(player.Position.X - 1, player.Position.Y - 1);
+            var monster = GetMonsterAt(left);
             if (monster != null) return monster;
 
-            monster = GetMonsterAt(player.Position.X, player.Position.Y - 1);
+            monster = GetMonsterAt(right);
             if (monster != null) return monster;
 
-            monster = GetMonsterAt(player.Position.X + 1, player.Position.Y - 1);
+            monster = GetMonsterAt(up);
             if (monster != null) return monster;
 
-            monster = GetMonsterAt(player.Position.X - 1, player.Position.Y);
+            monster = GetMonsterAt(down);
             if (monster != null) return monster;
 
-            monster = GetMonsterAt(player.Position.X + 1, player.Position.Y);
-            if (monster != null) return monster;
-
-            monster = GetMonsterAt(player.Position.X - 1, player.Position.Y + 1);
-            if (monster != null) return monster;
-
-            monster = GetMonsterAt(player.Position.X, player.Position.Y + 1);
-            if (monster != null) return monster;
-
-            monster = GetMonsterAt(player.Position.X + 1, player.Position.Y + 1);
             return monster;
         }
 
@@ -351,12 +530,12 @@ namespace RogueBot
             }
 
             // 🧠 DEAD END DETECTION
-            if (validMoves.Count == 1 && LastRest.AddSeconds(2) < DateTime.Now)
+            if (validMoves.Count == 1 && player.Position != _lastDeadEnd)
             {
-                LastRest = DateTime.Now;
                 var pos = (player.Position.X, player.Position.Y);
                 Debug.WriteLine("Dead end detected at " + pos);
-                _searchTurnsRemaining = 10;
+                _lastDeadEnd = player.Position;
+                _searchTurnsRemaining = 20;
                 return C.Search;
             }
 
@@ -417,45 +596,37 @@ namespace RogueBot
 
         public char GetMoveTowards(Player player, Position target)
         {
-            var start = player.Position;
+            var map = player.Map;
+            var p = player.Position;
 
             var validMoves = new List<char>();
 
-            var left = false;
-            var right = false;
-            var up = false;
-            var down = false;
+            var left = new Position(p.X - 1, p.Y);
+            var right = new Position(p.X + 1, p.Y);
+            var up = new Position(p.X, p.Y - 1);
+            var down = new Position(p.X, p.Y + 1);
 
             // Simple greedy movement
-            if (target.X < start.X)
-            {
-                left = true;
-            }
-            if (target.X > start.X) 
-            { 
-                right = true; 
-            }
-            if (target.Y > start.Y) 
-            { 
-                down = true; 
-            }
-            if (target.Y < start.Y) 
-            { 
-                up = true; 
-            }
+            if (target.X < p.X && Walkable(map, left)) validMoves.Add(C.Left);
+            if (target.X > p.X && Walkable(map, right)) validMoves.Add(C.Right);
+            if (target.Y < p.Y && Walkable(map, up)) validMoves.Add(C.Up);
+            if (target.Y > p.Y && Walkable(map, down)) validMoves.Add(C.Down);
 
-            if (left) validMoves.Add(C.Left);
-            if (right) validMoves.Add(C.Right);
-            if (up) validMoves.Add(C.Up);
-            if (down) validMoves.Add(C.Down);
-
-            if (validMoves.Any(m => Walkable(player.Map, GetNextPosition(start, m))))
+            if (validMoves.Any())
             {
                 return validMoves[Random.Shared.Next(validMoves.Count)];
             }
 
-            // Random walkable move
-            return Moves[Random.Shared.Next(Moves.Length)];
+            // Random walkable move, or search if there are none
+            validMoves.Clear();
+            validMoves.Add(C.Search);
+
+            if (Walkable(map, left)) validMoves.Add(C.Left);
+            if (Walkable(map, right)) validMoves.Add(C.Right);
+            if (Walkable(map, up)) validMoves.Add(C.Up);
+            if (Walkable(map, down)) validMoves.Add(C.Down);
+
+            return validMoves[Random.Shared.Next(validMoves.Count)];
         }
 
         public char RunAwayFromMonster(Player player, Position monster)
@@ -546,11 +717,6 @@ namespace RogueBot
 
         private Map UpdateMap(Player player, Map currentMap)
         {
-            if (_startRoom == null)
-            {
-                _startRoom = currentMap.Rooms.First();
-            }
-
             player.Update(currentMap);
 
             return currentMap;
