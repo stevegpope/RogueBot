@@ -38,61 +38,76 @@ namespace RogueBot
                 _currentChar = _previousMap.Maps[player.Position.Y][player.Position.X];
             }
 
-            // In combat?
-            if (_combat)
-            {
-                var combatMove = ChooseCombatMove(player, map);
-                if (combatMove != C.Unknown)
-                {
-                    _previousMove = combatMove;
-                    return combatMove;
-                }
-            }
-
-            // Are we under attack?
-            Monster monster = GetCloseMonster(player, currentMap);
-            if (monster != null)
-            {
-                // Low on health
-                if (player.Hp < player.HpMax / 2)
-                {
-                    // Get the hell out of there
-                    var scroll = player.InventoryItems.FirstOrDefault(i => i.Name.Contains("scroll of teleport", StringComparison.OrdinalIgnoreCase));
-                    if (scroll != null)
-                    {
-                        player.ReadScroll(scroll);
-                        return C.Search;
-                    }
-
-                    // Heal up and continue the fight
-                    var potion = player.InventoryItems.FirstOrDefault(i => i.IsPotion && i.Name.Contains("healing", StringComparison.OrdinalIgnoreCase));
-                    if (potion != null)
-                    {
-                        player.QuaffPotion(potion);
-                    }
-                }
-
-                return GetMoveTowards(player, monster.Position);
-            }
-
-            // Low on health?
-            if (player.Hp < player.HpMax * 0.75)
-            {
-                // Search while we wait
-                return C.Search;
-            }
-
-            if (_searchTurnsRemaining > 0)
-            {
-                _searchTurnsRemaining--;
-                return C.Search;
-            }
-
             // Automatically search every other turn for now to find our way out of places
             char move = Explore(player);
 
             try
             {
+                // In combat?
+                if (_combat)
+                {
+                    move = ChooseCombatMove(player, map);
+                    return move;
+                }
+
+                // Are we under attack?
+                Monster monster = GetCloseMonster(player, currentMap);
+                if (monster != null)
+                {
+                    // Low on health
+                    if (player.Hp < player.HpMax / 2)
+                    {
+                        // Get the hell out of there
+                        var scroll = player.InventoryItems.FirstOrDefault(i => i.Name.Contains("scroll of teleport", StringComparison.OrdinalIgnoreCase));
+                        if (scroll != null)
+                        {
+                            player.ReadScroll(scroll);
+                            move = C.Search;
+                            return move;
+                        }
+
+                        // Heal up and continue the fight
+                        var potion = player.InventoryItems.FirstOrDefault(i => i.IsPotion && i.Name.Contains("healing", StringComparison.OrdinalIgnoreCase));
+                        if (potion != null)
+                        {
+                            player.QuaffPotion(potion);
+                        }
+                    }
+
+                    move = GetMoveTowards(player, monster.Position);
+                    return move;
+                }
+
+                // Low on health?
+                if (player.Hp < player.HpMax * 0.75)
+                {
+                    // Search while we wait
+                    move = C.Search;
+                    return move;
+                }
+
+                if (_searchTurnsRemaining > 0)
+                {
+                    var validMoves = 0;
+                    foreach (var possibleMove in Moves)
+                    {
+                        if (CanMove(player, possibleMove))
+                            validMoves++;
+                    }
+
+                    // If we can move again do not search
+                    if (validMoves > 1)
+                    {
+                        _searchTurnsRemaining = 0;
+                    }
+                    else
+                    {
+                        _searchTurnsRemaining--;
+                        move = C.Search;
+                        return move;
+                    }
+                }
+
                 if (player.Hungry())
                 {
                     player.Eat();
@@ -482,7 +497,10 @@ namespace RogueBot
             // Backup, just in case there are not enough rooms
             var beenEveryWhereTwice = _visited.Count > 4 && _visited.All(v => v.Value > 1);
 
-            return visitedRooms >= 5 || beenEveryWhereTwice;
+            // Also ok if we visited lots of locations
+            var lotsOfLocations = _visited.Count >= 250;
+
+            return visitedRooms >= 5 || beenEveryWhereTwice || lotsOfLocations;
         }
 
         private Monster GetCloseMonster(Player player, Map currentMap)
