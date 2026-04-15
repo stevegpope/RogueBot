@@ -315,7 +315,6 @@ namespace RogueBot
             Debug.WriteLine("Finished using " + itemType);
         }
 
-        
         internal void InventoryCheck()
         {
             InventoryItems = Inventory.Get(_console);
