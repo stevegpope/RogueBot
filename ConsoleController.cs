@@ -6,29 +6,11 @@ namespace RogueBot
     {
         private static readonly SemaphoreSlim _apiLock = new SemaphoreSlim(1, 1);
 
-        private static Process _rogue;
         private int _pid;
-        private nint _console;
 
         public ConsoleController(Process rogue)
         {
-            _rogue = rogue;
             _pid = rogue.Id;
-            _console = GetConsole(rogue);
-        }
-
-        public static nint GetConsole(Process rogue)
-        {
-            // Detach from current console FIRST
-            Native.FreeConsole();
-
-            // Attach to Rogue's console
-            if (!Native.AttachConsole(rogue.Id))
-            {
-                throw new InvalidOperationException("Failed to attach to Rogue's console");
-            }
-
-            return Native.GetStdHandle(Native.STD_OUTPUT_HANDLE);
         }
 
         private T ExecuteConsoleAction<T>(Func<IntPtr, T> action)
