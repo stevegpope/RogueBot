@@ -4,12 +4,21 @@ namespace RogueBot
 {
     public class ConsoleController
     {
+        private static readonly SemaphoreSlim _apiLock = new SemaphoreSlim(1, 1);
+
         private static Process _rogue;
+        private int _pid;
+        private nint _console;
+
+        public ConsoleController(Process rogue)
+        {
+            _rogue = rogue;
+            _pid = rogue.Id;
+            _console = GetConsole(rogue);
+        }
 
         public static nint GetConsole(Process rogue)
         {
-            _rogue = rogue;
-
             // Detach from current console FIRST
             Native.FreeConsole();
 
@@ -22,58 +31,80 @@ namespace RogueBot
             return Native.GetStdHandle(Native.STD_OUTPUT_HANDLE);
         }
 
-        public static char[][] ReadMap(IntPtr console)
+        private T ExecuteConsoleAction<T>(Func<IntPtr, T> action)
         {
-            const short WIDTH = 80;
-            const short HEIGHT = 26;
+            _apiLock.Wait();
 
-            Native.CHAR_INFO[] buffer = new Native.CHAR_INFO[WIDTH * HEIGHT];
-
-            Native.SMALL_RECT region = new Native.SMALL_RECT
+            try
             {
-                Left = 0,
-                Top = 0,
-                Right = WIDTH - 1,
-                Bottom = HEIGHT - 1
-            };
+                Native.FreeConsole(); // Must be free before we can attach
+                if (!Native.AttachConsole(_pid))
+                    throw new Exception($"Failed to attach to PID {_pid}");
 
-            bool ok = Native.ReadConsoleOutput(
-                console,
-                buffer,
-                new Native.COORD { X = WIDTH, Y = HEIGHT },
-                new Native.COORD { X = 0, Y = 0 },
-                ref region);
-
-            if (!ok)
-                throw new Exception("ReadConsoleOutput failed");
-
-            var map = new char[HEIGHT][];
-
-            for (int y = 0; y < HEIGHT; y++)
-            {
-                map[y] = new char[WIDTH];
-                for (int x = 0; x < WIDTH; x++)
-                {
-                    map[y][x] = buffer[y * WIDTH + x].UnicodeChar;
-                }
+                IntPtr hConsole = Native.GetStdHandle(Native.STD_OUTPUT_HANDLE);
+                return action(hConsole);
             }
-
-            return map;
+            finally
+            {
+                Native.FreeConsole();
+                _apiLock.Release();
+            }
         }
 
-        public static Map WaitForTurnReady(IntPtr console)
+        public char[][] ReadMap()
+        {
+            return ExecuteConsoleAction(hConsole =>
+            {
+                const short WIDTH = 80;
+                const short HEIGHT = 26;
+
+                Native.CHAR_INFO[] buffer = new Native.CHAR_INFO[WIDTH * HEIGHT];
+
+                Native.SMALL_RECT region = new Native.SMALL_RECT
+                {
+                    Left = 0,
+                    Top = 0,
+                    Right = WIDTH - 1,
+                    Bottom = HEIGHT - 1
+                };
+
+                bool ok = Native.ReadConsoleOutput(
+                    hConsole,
+                    buffer,
+                    new Native.COORD { X = WIDTH, Y = HEIGHT },
+                    new Native.COORD { X = 0, Y = 0 },
+                    ref region);
+
+                if (!ok)
+                    throw new Exception("ReadConsoleOutput failed");
+
+                var map = new char[HEIGHT][];
+
+                for (int y = 0; y < HEIGHT; y++)
+                {
+                    map[y] = new char[WIDTH];
+                    for (int x = 0; x < WIDTH; x++)
+                    {
+                        map[y][x] = buffer[y * WIDTH + x].UnicodeChar;
+                    }
+                }
+
+                return map;
+            });
+        }
+
+        public Map WaitForTurnReady()
         {
             Map map = null;
             var sw = Stopwatch.StartNew();
 
             var validStates = new[] { "More", "REST", "call it", "Level", "identify", "space" };
 
-
             while (true)
             {
                 Thread.Sleep(5);
 
-                var newMap = ReadMap(console);
+                var newMap = ReadMap();
                 map = new Map(newMap);
 
                 if (validStates.Any(s => map.HasString(s)))
@@ -87,19 +118,19 @@ namespace RogueBot
             }
         }
 
-        internal static List<string> WaitForText(nint console, params string[] search)
+        internal List<string> WaitForText(params string[] search)
         {
-            var lines = ConsoleController.ReadMap(console).Select(line => new string(line)).ToList();
+            var lines = ReadMap().Select(line => new string(line)).ToList();
             var stopwatch = Stopwatch.StartNew();
             while (!lines.Any(line => search.Any(s => line.Contains(s, StringComparison.OrdinalIgnoreCase))))
             {
                 if (lines.Any(s => s.Contains("More")))
                 {
-                    ConsoleController.SendKey(C.Space);
+                    SendKey(C.Space);
                 }
 
                 Thread.Sleep(100);
-                lines = ConsoleController.ReadMap(console).Select(line => new string(line)).ToList();
+                lines = ReadMap().Select(line => new string(line)).ToList();
 
                 if (stopwatch.Elapsed > TimeSpan.FromSeconds(2))
                     break;
@@ -108,7 +139,7 @@ namespace RogueBot
             return lines;
         }
 
-        internal static void SendKey(string keys)
+        internal void SendKey(string keys)
         {
             foreach (var key in keys)
             {
@@ -116,48 +147,30 @@ namespace RogueBot
             }
         }
 
-        internal static void SendKey(char key)
+        internal void SendKey(char key)
         {
-            var hInput = Native.GetStdHandle(Native.STD_INPUT_HANDLE);
+            ExecuteConsoleAction(hConsole => {
+                IntPtr hInput = Native.GetStdHandle(Native.STD_INPUT_HANDLE);
+                bool isUpper = char.IsUpper(key);
+                ushort vkCode = (ushort)char.ToUpper(key);
 
-            var inputs = new Native.INPUT_RECORD[2];
-
-            // Key down
-            inputs[0] = new Native.INPUT_RECORD
-            {
-                EventType = Native.KEY_EVENT,
-                KeyEvent = new Native.KEY_EVENT_RECORD
+                var records = new Native.INPUT_RECORD[2];
+                records[0].EventType = Native.KEY_EVENT;
+                records[0].KeyEvent = new Native.KEY_EVENT_RECORD
                 {
                     bKeyDown = true,
                     wRepeatCount = 1,
-                    wVirtualKeyCode = (ushort)char.ToUpper(key),
-                    wVirtualScanCode = 0,
+                    wVirtualKeyCode = vkCode,
                     UnicodeChar = key,
-                    dwControlKeyState = 0
-                }
-            };
+                    dwControlKeyState = (uint)(isUpper ? 0x0080 : 0)
+                };
+                records[1] = records[0];
+                records[1].KeyEvent.bKeyDown = false;
 
-            // Key up
-            inputs[1] = new Native.INPUT_RECORD
-            {
-                EventType = Native.KEY_EVENT,
-                KeyEvent = new Native.KEY_EVENT_RECORD
-                {
-                    bKeyDown = false,
-                    wRepeatCount = 1,
-                    wVirtualKeyCode = (ushort)char.ToUpper(key),
-                    wVirtualScanCode = 0,
-                    UnicodeChar = key,
-                    dwControlKeyState = 0
-                }
-            };
-
-            Debug.WriteLine($"Send key ({key})");
-
-            if (!Native.WriteConsoleInput(hInput, inputs, (uint)inputs.Length, out var written))
-            {
-                throw new Exception("WriteConsoleInput failed");
-            }
+                Debug.WriteLine($"Send key ({key})");
+                Native.WriteConsoleInput(hInput, records, 2, out _);
+                return true;
+            });
 
             Thread.Sleep(50);
         }

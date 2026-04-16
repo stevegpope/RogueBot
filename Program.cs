@@ -14,18 +14,13 @@ namespace RogueBot
                 var logic = new Logic();
                 Player player = null;
 
-                Map previousMap = null;
-                Map currentMap = null;
-                Room startRoom = null;
-                char previousMove = '\0';
-
-                var console = ConsoleController.GetConsole(rogue);
+                var console = new ConsoleController(rogue);
 
                 while (!rogue.HasExited)
                 {
                     try
                     {
-                        currentMap = ConsoleController.WaitForTurnReady(console);
+                        var currentMap = console.WaitForTurnReady();
                         if (currentMap == null)
                         {
                             continue;
@@ -38,7 +33,7 @@ namespace RogueBot
                         }
 
                         var move = currentMap.HasString(C.Player.ToString()) ? logic.ChooseMove(player, currentMap) : logic.ChooseMove(currentMap);
-                        ConsoleController.SendKey(move);
+                        console.SendKey(move);
                     }
                     catch (Exception ex)
                     {

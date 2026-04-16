@@ -14,6 +14,7 @@ namespace RogueBot
             @"Str:\s*(?<Str>\d+)\((?<StrMax>\d+)\)\s+" +
             @"Arm:\s*(?<Armor>\d+)\s+" +
             @"Exp:\s*(?<ExpLevel>\d+)\/(?<ExpPoints>\d+)", RegexOptions.Compiled);
+        private ConsoleController _console;
 
         public int Level { get; private set; }
         public int Gold { get; private set; }
@@ -31,9 +32,8 @@ namespace RogueBot
 
         private readonly string[] States = new[] { "Hungry", "Weak", "Faint" };
 
-        private nint _console;
 
-        public Player(Map map, nint console)
+        public Player(Map map, ConsoleController console)
         {
             _console = console;
             Update(map);
@@ -81,14 +81,14 @@ namespace RogueBot
 
         private void EatItem(InventoryItem item)
         {
-            ConsoleController.WaitForTurnReady(_console);
+            _console.WaitForTurnReady();
 
-            ConsoleController.SendKey(C.Eat);
+            _console.SendKey(C.Eat);
             Thread.Sleep(1000);
 
-            var lines = ConsoleController.WaitForText(_console, "eat?");
+            var lines = _console.WaitForText("eat?");
 
-            ConsoleController.SendKey(item.Letter);
+            _console.SendKey(item.Letter);
         }
 
         internal void Use(string foundStr)
@@ -160,14 +160,14 @@ namespace RogueBot
         {
             Debug.WriteLine($"Trying to wear armor {newItem.Name} ({newItem.Letter})");
 
-            ConsoleController.SendKey(C.TakeOff);
+            _console.SendKey(C.TakeOff);
             Thread.Sleep(500);
 
-            ConsoleController.SendKey(C.WearArmor);
+            _console.SendKey(C.WearArmor);
             Thread.Sleep(500);
 
-            ConsoleController.WaitForText(_console, "Which object");
-            ConsoleController.SendKey(newItem.Letter);
+            _console.WaitForText("Which object");
+            _console.SendKey(newItem.Letter);
 
             FinishUsingItem("armor");
         }
@@ -176,10 +176,10 @@ namespace RogueBot
         {
             Debug.WriteLine($"Trying to read {newItem.Name} ({newItem.Letter})");
 
-            ConsoleController.SendKey(C.ReadScroll);
-            ConsoleController.WaitForText(_console, "Which object");
+            _console.SendKey(C.ReadScroll);
+            _console.WaitForText( "Which object");
 
-            ConsoleController.SendKey(newItem.Letter);
+            _console.SendKey(newItem.Letter);
             InventoryItems.Remove(newItem);
             FinishUsingItem("scroll");
         }
@@ -188,10 +188,10 @@ namespace RogueBot
         {
             Debug.WriteLine($"Trying to quaff {newItem.Name} ({newItem.Letter})");
 
-            ConsoleController.SendKey(C.QuaffPotion);
-            ConsoleController.WaitForText(_console, "Which object");
+            _console.SendKey(C.QuaffPotion);
+            _console.WaitForText("Which object");
 
-            ConsoleController.SendKey(newItem.Letter);
+            _console.SendKey(newItem.Letter);
             InventoryItems.Remove(newItem);
             FinishUsingItem("potion");
         }
@@ -200,10 +200,10 @@ namespace RogueBot
         {
             Debug.WriteLine($"Trying to wield {newItem.Name} ({newItem.Letter})");
 
-            ConsoleController.SendKey(C.Wield);
-            ConsoleController.WaitForText(_console, "Which object");
+            _console.SendKey(C.Wield);
+            _console.WaitForText("Which object");
 
-            ConsoleController.SendKey(newItem.Letter);
+            _console.SendKey(newItem.Letter);
             FinishUsingItem("sword");
         }
 
@@ -216,23 +216,23 @@ namespace RogueBot
             var right = InventoryItems.FirstOrDefault(i => i.Status?.Contains("right hand") == true);
             if (left != null && right != null)
             {
-                ConsoleController.SendKey(C.Remove);
-                ConsoleController.WaitForText(_console, "hand");
+                _console.SendKey(C.Remove);
+                _console.WaitForText("hand");
 
                 // Remove a random one
                 var toRemove = new[] { "l", "r" }[new Random().Next(2)];
-                ConsoleController.SendKey(toRemove);
-                ConsoleController.WaitForText(_console, "Was wearing", "cursed");
+                _console.SendKey(toRemove);
+                _console.WaitForText("Was wearing", "cursed");
             }
 
-            ConsoleController.SendKey(C.PutOn);
-            ConsoleController.WaitForText(_console, "Which object");
-            ConsoleController.SendKey(newItem.Letter);
+            _console.SendKey(C.PutOn);
+            _console.WaitForText("Which object");
+            _console.SendKey(newItem.Letter);
 
             if (left == null && right == null)
             {
                 // Left hand
-                ConsoleController.SendKey("l");
+                _console.SendKey("l");
                 FinishUsingItem("ring");
             }
         }
@@ -243,7 +243,7 @@ namespace RogueBot
 
             var itemFullName = itemType + " of " + Random.Shared.NextDouble();
 
-            var map = new Map(ConsoleController.ReadMap(_console));
+            var map = new Map(_console.ReadMap());
             if (map.HasString("more"))
             {
                 var itemName = Items.ParseItemName(map.Details);
@@ -253,9 +253,9 @@ namespace RogueBot
                 }
 
                 Debug.WriteLine("MORE");
-                ConsoleController.SendKey(C.Space);
+                _console.SendKey(C.Space);
                 Thread.Sleep(500);
-                map = new Map(ConsoleController.ReadMap(_console));
+                map = new Map(_console.ReadMap());
             }
 
             Thread.Sleep(1000);
@@ -263,8 +263,8 @@ namespace RogueBot
             if (map.HasString("call it"))
             {
                 Debug.WriteLine("Naming");
-                ConsoleController.SendKey(itemFullName);
-                ConsoleController.SendKey(C.Enter);
+                _console.SendKey(itemFullName);
+                _console.SendKey(C.Enter);
                 Thread.Sleep(500);
             }
 
@@ -272,23 +272,23 @@ namespace RogueBot
             {
                 Debug.WriteLine("Identifying");
 
-                map = new Map(ConsoleController.ReadMap(_console));
+                map = new Map(_console.ReadMap());
                 while (map.HasString("more"))
                 {
-                    ConsoleController.SendKey(C.Space);
+                    _console.SendKey(C.Space);
                     Thread.Sleep(500);
-                    map = new Map(ConsoleController.ReadMap(_console));
+                    map = new Map(_console.ReadMap());
                 }
 
                 Debug.WriteLine("Open list");
-                ConsoleController.SendKey("*");
+                _console.SendKey("*");
                 Thread.Sleep(1000);
 
-                map = new Map(ConsoleController.ReadMap(_console));
+                map = new Map(_console.ReadMap());
                 if (map.HasString("appropriate"))
                 {
                     Debug.WriteLine("Nothing appropriate");
-                    ConsoleController.SendKey(C.Space);
+                    _console.SendKey(C.Space);
                     Thread.Sleep(500);
                 }
                 else
@@ -298,14 +298,14 @@ namespace RogueBot
                     var items = InventoryItem.Parse(lines);
 
                     Debug.WriteLine("Close list");
-                    ConsoleController.SendKey(C.Space);
+                    _console.SendKey(C.Space);
                     Thread.Sleep(500);
 
                     Debug.WriteLine("Choose item to ID");
                     if (items.Any())
                     {
                         var item = items.Last();
-                        ConsoleController.SendKey(item.Letter);
+                        _console.SendKey(item.Letter);
                         Debug.WriteLine("Finish up");
                         FinishUsingItem(item.Name);
                     }
@@ -387,13 +387,13 @@ namespace RogueBot
         internal void ThrowItem(InventoryItem item, char direction)
         {
             Debug.WriteLine($"Throw ${item.Name} at ${direction}");
-            ConsoleController.SendKey(C.Throw);
+            _console.SendKey(C.Throw);
             Thread.Sleep(500);
 
-            ConsoleController.SendKey(direction);
+            _console.SendKey(direction);
             Thread.Sleep(500);
 
-            ConsoleController.SendKey(item.Letter);
+            _console.SendKey(item.Letter);
             Thread.Sleep(500);
         }
     }
