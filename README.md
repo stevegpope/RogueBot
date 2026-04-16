@@ -1,11 +1,12 @@
-RogueBot - play rogue automatically
+RogueBot - play rogue automatically, now in parallel!
+
 This is the early implementation, so it is FAR from perfect. The purpose of this project is to inspire others to make better AI for the game.
 
 Instuctions
 =============
 - Compile .sln
 - cd bin\Debug\net10.0-windows
-- .\RogueBot.exe
+- .\RogueBot.exe <number of processes>
 
 It will:
 - launch rogue54.exe (or connect to an existing one)
