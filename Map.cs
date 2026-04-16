@@ -55,7 +55,7 @@ namespace RogueBot
             foreach (var line in Maps)
             { 
                 var str = new string(line);
-                if (str.Contains(search))
+                if (str.Contains(search, StringComparison.OrdinalIgnoreCase))
                 {
                     return str;
                 }

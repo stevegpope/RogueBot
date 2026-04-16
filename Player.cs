@@ -271,49 +271,54 @@ namespace RogueBot
 
             if (map.HasString("identify"))
             {
-                Debug.WriteLine("Identifying");
-
-                map = new Map(_console.ReadMap());
-                while (map.HasString("more"))
-                {
-                    _console.SendKey(C.Space);
-                    Thread.Sleep(500);
-                    map = new Map(_console.ReadMap());
-                }
-
-                Debug.WriteLine("Open list");
-                _console.SendKey("*");
-                Thread.Sleep(1000);
-
-                map = new Map(_console.ReadMap());
-                if (map.HasString("appropriate"))
-                {
-                    Debug.WriteLine("Nothing appropriate");
-                    _console.SendKey(C.Space);
-                    Thread.Sleep(500);
-                }
-                else
-                {
-                    Debug.WriteLine("Identify list present");
-                    var lines = map.Maps.Select(line => new string(line)).ToList();
-                    var items = InventoryItem.Parse(lines);
-
-                    Debug.WriteLine("Close list");
-                    _console.SendKey(C.Space);
-                    Thread.Sleep(500);
-
-                    Debug.WriteLine("Choose item to ID");
-                    if (items.Any())
-                    {
-                        var item = items.Last();
-                        _console.SendKey(item.Letter);
-                        Debug.WriteLine("Finish up");
-                        FinishUsingItem(item.Name);
-                    }
-                }
+                Identify();
             }
 
             Debug.WriteLine("Finished using " + itemType);
+        }
+
+        public void Identify()
+        {
+            Debug.WriteLine("Identifying");
+
+            Map = new Map(_console.ReadMap());
+            while (Map.HasString("more"))
+            {
+                _console.SendKey(C.Space);
+                Thread.Sleep(500);
+                Map = new Map(_console.ReadMap());
+            }
+
+            Debug.WriteLine("Open list");
+            _console.SendKey("*");
+            Thread.Sleep(1000);
+
+            Map = new Map(_console.ReadMap());
+            if (Map.HasString("appropriate"))
+            {
+                Debug.WriteLine("Nothing appropriate");
+                _console.SendKey(C.Space);
+                Thread.Sleep(500);
+            }
+            else
+            {
+                Debug.WriteLine("Identify list present");
+                var lines = Map.Maps.Select(line => new string(line)).ToList();
+                var items = InventoryItem.Parse(lines);
+
+                Debug.WriteLine("Close list");
+                _console.SendKey(C.Space);
+                Thread.Sleep(500);
+
+                Debug.WriteLine("Choose item to ID");
+                if (items.Any())
+                {
+                    var item = items.Last();
+                    _console.SendKey(item.Letter);
+                    Debug.WriteLine("Finish up");
+                    FinishUsingItem(item.Name);
+                }
+            }
         }
 
         internal void InventoryCheck()

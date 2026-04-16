@@ -7,8 +7,15 @@
     <Nullable>enable</Nullable>
 	  <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
+	
+	<ItemGroup>
+		<!-- Replace 'RogueWatcher' with the actual folder name if different -->
+		<Compile Remove="RogueWatcher\**" />
+		<EmbeddedResource Remove="RogueWatcher\**" />
+		<None Remove="RogueWatcher\**" />
+	</ItemGroup>
 
-  <ItemGroup>
+	<ItemGroup>
     <None Update="rogue\LICENSE.TXT">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

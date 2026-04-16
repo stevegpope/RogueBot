@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using static System.Windows.Forms.LinkLabel;
 
 namespace RogueBot
 {
@@ -37,37 +38,44 @@ namespace RogueBot
         {
             return ExecuteConsoleAction(hConsole =>
             {
-                const short WIDTH = 80;
-                const short HEIGHT = 26;
+                // 1. Get the REAL buffer dimensions (dwSize.X and dwSize.Y)
+                if (!Native.GetConsoleScreenBufferInfo(hConsole, out var info))
+                    throw new Exception("GetConsoleScreenBufferInfo failed");
 
-                Native.CHAR_INFO[] buffer = new Native.CHAR_INFO[WIDTH * HEIGHT];
+                short actualWidth = info.dwSize.X;  // This is the key to fixing the staircase
+                short actualHeight = info.dwSize.Y;
 
+                // 2. Read the full buffer based on the actual size
+                Native.CHAR_INFO[] buffer = new Native.CHAR_INFO[actualWidth * actualHeight];
                 Native.SMALL_RECT region = new Native.SMALL_RECT
                 {
                     Left = 0,
                     Top = 0,
-                    Right = WIDTH - 1,
-                    Bottom = HEIGHT - 1
+                    Right = (short)(actualWidth - 1),
+                    Bottom = (short)(actualHeight - 1)
                 };
 
                 bool ok = Native.ReadConsoleOutput(
                     hConsole,
                     buffer,
-                    new Native.COORD { X = WIDTH, Y = HEIGHT },
+                    new Native.COORD { X = actualWidth, Y = actualHeight },
                     new Native.COORD { X = 0, Y = 0 },
                     ref region);
 
-                if (!ok)
-                    throw new Exception("ReadConsoleOutput failed");
+                if (!ok) throw new Exception("ReadConsoleOutput failed");
 
-                var map = new char[HEIGHT][];
+                // 3. Map only the 80x27 area we care about
+                const int TARGET_WIDTH = 80;
+                const int TARGET_HEIGHT = 28;
+                var map = new char[TARGET_HEIGHT][];
 
-                for (int y = 0; y < HEIGHT; y++)
+                for (int y = 0; y < TARGET_HEIGHT; y++)
                 {
-                    map[y] = new char[WIDTH];
-                    for (int x = 0; x < WIDTH; x++)
+                    map[y] = new char[TARGET_WIDTH];
+                    for (int x = 0; x < TARGET_WIDTH; x++)
                     {
-                        map[y][x] = buffer[y * WIDTH + x].UnicodeChar;
+                        // Align using actualWidth to skip the "empty" space at the end of rows
+                        map[y][x] = buffer[y * actualWidth + x].UnicodeChar;
                     }
                 }
 
@@ -80,12 +88,10 @@ namespace RogueBot
             Map map = null;
             var sw = Stopwatch.StartNew();
 
-            var validStates = new[] { "More", "REST", "call it", "Level", "identify", "space" };
+            var validStates = new[] { "more", "return", "killed", "call it", "level", "identify", "space", "worn" };
 
             while (true)
             {
-                Thread.Sleep(5);
-
                 var newMap = ReadMap();
                 map = new Map(newMap);
 
@@ -96,7 +102,9 @@ namespace RogueBot
 
                 // Safety timeout (not primary logic)
                 if (sw.ElapsedMilliseconds > 2000)
-                    throw new Exception("Game did not reach a ready state");
+                    throw new Exception($"{_pid} Game did not reach a ready state");
+
+                Thread.Sleep(5);
             }
         }
 
@@ -133,23 +141,48 @@ namespace RogueBot
         {
             ExecuteConsoleAction(hConsole => {
                 IntPtr hInput = Native.GetStdHandle(Native.STD_INPUT_HANDLE);
-                bool isUpper = char.IsUpper(key);
-                ushort vkCode = (ushort)char.ToUpper(key);
+
+                ushort vkCode;
+                uint controlState = 0;
+                char charToRead = key;
+
+                if (key == C.Escape)
+                {
+                    vkCode = 0x1B;
+                    charToRead = '\0'; // Send as a "Key Event" only, not a "Character"
+                    controlState = 0;  // Force Shift OFF for Escape
+                }
+                else if (key == C.Enter)
+                {
+                    vkCode = 0x0D;     // VK_RETURN
+                    charToRead = '\r'; // Enter character
+                    controlState = 0;  // Force Shift OFF for Enter
+                }
+                else
+                {
+                    vkCode = (ushort)char.ToUpper(key);
+                    // Only apply SHIFT if it's actually an uppercase letter
+                    if (char.IsUpper(key))
+                        controlState = 0x0080;
+                }
 
                 var records = new Native.INPUT_RECORD[2];
+
+                // Key Down
                 records[0].EventType = Native.KEY_EVENT;
                 records[0].KeyEvent = new Native.KEY_EVENT_RECORD
                 {
                     bKeyDown = true,
                     wRepeatCount = 1,
                     wVirtualKeyCode = vkCode,
-                    UnicodeChar = key,
-                    dwControlKeyState = (uint)(isUpper ? 0x0080 : 0)
+                    UnicodeChar = charToRead,
+                    dwControlKeyState = controlState
                 };
+
+                // Key Up
                 records[1] = records[0];
                 records[1].KeyEvent.bKeyDown = false;
 
-                Debug.WriteLine($"Send key ({key})");
                 Native.WriteConsoleInput(hInput, records, 2, out _);
                 return true;
             });

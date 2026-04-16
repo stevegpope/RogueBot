@@ -23,7 +23,7 @@
         public const char Trap = '^';
 
         // Actions
-        public const char Escape = '`';
+        public const char Escape = '\x1b';
         public const char Left = 'h';
         public const char Down = 'j';
         public const char Up = 'k';

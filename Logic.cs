@@ -12,7 +12,7 @@ namespace RogueBot
         private int _searchTurnsRemaining = 0;
 
         // Track explored tiles
-        public static Dictionary<(int x, int y), int> _visited = new();
+        public Dictionary<(int x, int y), int> _visited = new();
 
         // Track recent positions (anti-oscillation)
         private Queue<(int x, int y)> _lastPositions = new();
@@ -741,12 +741,12 @@ namespace RogueBot
                 return C.Enter;
             }
 
-            throw new ArgumentException($"Unsupported state: ${currentMap}");
+            return C.Unknown;
         }
 
         public static bool Died(Map map)
         {
-            return map.HasString("REST") || map.HasString("Score");
+            return map.HasString("killed");
         }
 
         private Map UpdateMap(Player player, Map currentMap)
