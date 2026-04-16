@@ -5,12 +5,19 @@ namespace RogueBot
     class Program
     {
         [STAThread] // Required for SendKeys
-        static async Task Main()
+        static async Task Main(string[] args)
         {
-            const int Processes = 3;
+            if (args.Length == 0)
+            {
+                Console.Write("Usage: RogueBot.exe <processes>");
+                return;
+            }
+
+            var processes = int.Parse(args[0]);
+
             var runners = new List<Runner>();
 
-            for (int i = 0; i < Processes; i++)
+            for (int i = 0; i < processes; i++)
             {
                 runners.Add(new Runner(runners));
             }

@@ -125,6 +125,7 @@ namespace RogueBot
                     _visited = new();
                     _lastPositions = new();
 
+                    Debug.WriteLine($"Down to {player.Level + 1}");
                     move = C.DownStairs;
                 }
                 else if (room != null)

@@ -14,6 +14,7 @@ namespace RogueBot
             @"Str:\s*(?<Str>\d+)\((?<StrMax>\d+)\)\s+" +
             @"Arm:\s*(?<Armor>\d+)\s+" +
             @"Exp:\s*(?<ExpLevel>\d+)\/(?<ExpPoints>\d+)", RegexOptions.Compiled);
+
         private ConsoleController _console;
 
         public int Level { get; private set; }

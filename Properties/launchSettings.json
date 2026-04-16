@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "RogueBot": {
+      "commandName": "Project",
+      "commandLineArgs": "10"
+    }
+  }
+}
