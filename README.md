@@ -10,18 +10,18 @@ Instuctions
 It will:
 - launch rogue54.exe (or connect to an existing one)
 - read the console
-- send key strokes using SendKeys.SendWait
+- send key strokes to the console
 
 Current Features
 =================
 - auto-explore
 - pick-up items
-- fight monsters
-- drink potions found
-- read scrolls found
-- wear armor found
-- wield weapons found
-- eat when hungry
+- fight monsters - the plan is to back up into a corridoor to funnel the enemies and wait for them. If they don't show up we go throw something at them and try again.
+- drink potions found until we know what they are
+- read scrolls found until we know what they are
+- wear armor found if it appears to be better
+- wield new weapons found
+- eat when hungry (BUG: often he eats the second time, about 5 seconds after he first gets hungry and tries to eat. This isn't really a problem, because it actually saves us on food to wait longer)
 
 NOTES
 =================
