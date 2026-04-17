@@ -13,7 +13,7 @@ It will:
 - read the console
 - send key strokes to the console
 
-Run RogueWatcher.exe -r to get a list of rogues and what level they are at, -p <pid> to see the current map of a rogue process 
+Run RogueViewer.exe to view running rogue instances.
 
 Current Features
 =================
