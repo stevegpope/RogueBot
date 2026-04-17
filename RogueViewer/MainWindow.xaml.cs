@@ -1,4 +1,5 @@
 ﻿using RogueBot;
+using System.Diagnostics;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -30,6 +31,12 @@ namespace RogueViewer
 
             if (vm?.SelectedInstance == null)
                 return;
+
+            if (e.Key == Key.Delete)
+            {
+                // Kill the selected instance
+                Process.GetProcessById(vm.SelectedInstance.ProcessId)?.Kill();
+            }
 
             // Convert WPF Key → char/string
             string key = KeyToString(e.Key);

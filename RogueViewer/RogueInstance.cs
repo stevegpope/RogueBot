@@ -1,10 +1,7 @@
 ﻿using RogueBot;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Text;
 
 namespace RogueViewer
 {
@@ -38,7 +35,21 @@ namespace RogueViewer
             }
         }
 
-        public TimeSpan Runtime { get; set; } = TimeSpan.Zero;
+        private TimeSpan _runTime = TimeSpan.Zero;
+
+        public TimeSpan Runtime
+        {
+            get => _runTime;
+            set
+            {
+                if (_runTime != value)
+                {
+                    _runTime = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public int ProcessId { get; set; } = 0;
 
         public event PropertyChangedEventHandler? PropertyChanged;
