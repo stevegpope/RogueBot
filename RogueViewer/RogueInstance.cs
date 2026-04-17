@@ -1,6 +1,8 @@
-﻿using System;
+﻿using RogueBot;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -23,8 +25,8 @@ namespace RogueViewer
         }
 
         private string _level = "";
-        public string Level 
-        { 
+        public string Level
+        {
             get => _level;
             set
             {
@@ -42,5 +44,15 @@ namespace RogueViewer
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+        internal void SendKey(string key)
+        {
+            var process = Process.GetProcessById(ProcessId);
+            if (process == null) return;
+
+            var console = new ConsoleController(process);
+            console.SendKey(key);
+        }
+
     }
 }

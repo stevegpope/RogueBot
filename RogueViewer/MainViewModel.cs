@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Threading;
 
 namespace RogueViewer
@@ -10,6 +11,7 @@ namespace RogueViewer
     public class MainViewModel : INotifyPropertyChanged
     {
         public ObservableCollection<RogueInstance> Instances { get; } = new();
+        public ICommand MoveCommand { get; }
 
         private RogueInstance? _selectedInstance;
         public RogueInstance? SelectedInstance

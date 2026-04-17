@@ -131,7 +131,7 @@ namespace RogueBot
             return lines;
         }
 
-        internal void SendKey(string keys)
+        public void SendKey(string keys)
         {
             foreach (var key in keys)
             {

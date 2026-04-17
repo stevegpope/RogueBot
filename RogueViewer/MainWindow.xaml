@@ -5,7 +5,12 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:RogueViewer"
         mc:Ignorable="d"
-        Title="Rogue Viewer" Height="450" Width="800" Margin="10">
+        Title="Rogue Viewer" 
+        Height="450" 
+        Width="800" 
+        Margin="10"  
+        PreviewKeyDown="Window_PreviewKeyDown"
+        Focusable="True">
     <Grid>
 
 
