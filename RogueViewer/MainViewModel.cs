@@ -60,7 +60,7 @@ namespace RogueViewer
                     {
                         // update existing
                         instance.Runtime = process.Runtime;
-                        instance.MapText = process.MapText;
+                        instance.MapText = process.MapText.Replace("\n\n", "\n");
                         instance.Level = process.Level;
                     });
                 }

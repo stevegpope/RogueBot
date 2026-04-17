@@ -33,12 +33,17 @@
         </ListBox>
 
         <TextBox Grid.Column="1"
-             Text="{Binding SelectedInstance.MapText}"
-             FontFamily="Consolas"
-             FontSize="14"
-             IsReadOnly="True"
-             AcceptsReturn="True"
-             VerticalScrollBarVisibility="Auto"
-             HorizontalScrollBarVisibility="Auto"/>
+         Text="{Binding SelectedInstance.MapText}"
+         FontFamily="Consolas"
+         FontSize="12"
+         IsReadOnly="True"
+         AcceptsReturn="True"
+         Background="Black"
+         Foreground="#00FF66"
+         BorderBrush="#003300"
+         CaretBrush="#00FF66"
+         VerticalScrollBarVisibility="Auto"
+         HorizontalScrollBarVisibility="Auto"
+         Padding="8"/>
     </Grid>
 </Window>

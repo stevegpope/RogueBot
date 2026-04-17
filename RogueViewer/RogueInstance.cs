@@ -22,7 +22,20 @@ namespace RogueViewer
             }
         }
 
-        public string Level { get; set; } = "Level 0";
+        private string _level = "";
+        public string Level 
+        { 
+            get => _level;
+            set
+            {
+                if (_level != value)
+                {
+                    _level = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public TimeSpan Runtime { get; set; } = TimeSpan.Zero;
         public int ProcessId { get; set; } = 0;
 

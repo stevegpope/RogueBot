@@ -106,9 +106,10 @@ namespace RogueBot
         {
             var map = console.WaitForTurnReady();
 
-            if (depth > 25)
+            if (depth > Random.Shared.Next(5, 10))
             {
-               C.WriteLine(ProcessId, "broke");
+                C.WriteLine(ProcessId, "broke");
+                return;
             }
 
             if (map.HasString("identify"))
@@ -125,7 +126,7 @@ namespace RogueBot
             {
                 console.SendKey(C.Space);
                 map = console.WaitForTurnReady();
-                ClearState(console, depth+1);
+                ClearState(console, depth + 1);
                 return;
             }
 
