@@ -285,7 +285,10 @@ namespace RogueBot
                     {
                         player.InventoryCheck();
                         var item = GetSomethingToThrow(player);
-                        player.ThrowItem(item, GetDirection(player, _targetMonster.Position));
+                        if (item != null)
+                        {
+                            player.ThrowItem(item, GetDirection(player, _targetMonster.Position));
+                        }
 
                         StartCombat(_targetMonster);
                         return ChooseCombatMove(player, map);
@@ -738,6 +741,7 @@ namespace RogueBot
             // Moves with no player
             if (Died(currentMap))
             {
+                Debug.WriteLine("Died");
                 return C.Enter;
             }
 

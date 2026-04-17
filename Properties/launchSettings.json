@@ -2,7 +2,7 @@
   "profiles": {
     "RogueBot": {
       "commandName": "Project",
-      "commandLineArgs": "20"
+      "commandLineArgs": "50"
     }
   }
 }

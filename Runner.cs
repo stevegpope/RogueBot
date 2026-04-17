@@ -102,15 +102,21 @@ namespace RogueBot
             ClearState(console);
         }
 
-        private static void ClearState(ConsoleController console)
+        private static void ClearState(ConsoleController console, int depth = 0)
         {
             var map = console.WaitForTurnReady();
+
+            if (depth > 25)
+            {
+               Debug.WriteLine("broke");
+            }
 
             if (map.HasString("identify"))
             {
                 var player = new Player(map, console);
                 player.Identify();
-                ClearState(console);
+                ClearState(console, depth + 1);
+                return;
             }
 
             var spaceConditions = new[] { "in hand", "being worn", "space", "more" };
@@ -118,17 +124,21 @@ namespace RogueBot
             if (condition != null)
             {
                 console.SendKey(C.Space);
-                console.SendKey(C.Enter);
-                ClearState(console);
+                map = console.WaitForTurnReady();
+                ClearState(console, depth+1);
+                return;
             }
 
-            var escapeConditions = new[] { "want to", "call it" };
+            var escapeConditions = new[] { "want to", "call", "quaff", "throw", "which direction" };
             condition = escapeConditions.FirstOrDefault(c => map.HasString(c));
             if (condition != null)
             {
                 console.SendKey(C.Escape);
                 console.SendKey(C.Enter);
-                ClearState(console);
+                console.SendKey(C.Space);
+                map = console.WaitForTurnReady();
+                ClearState(console, depth + 1);
+                return;
             }
         }
 
@@ -157,8 +167,8 @@ namespace RogueBot
                 FileName = @"rogue54.exe",
                 WorkingDirectory = Path.Combine(Environment.CurrentDirectory, "rogue"),
                 UseShellExecute = true,
-                CreateNoWindow = false,
-                //WindowStyle = ProcessWindowStyle.Minimized,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden,
             };
 
             _rogue = Process.Start(psi);

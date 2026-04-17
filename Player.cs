@@ -263,7 +263,7 @@ namespace RogueBot
 
             if (map.HasString("call it"))
             {
-                Debug.WriteLine("Naming");
+                Debug.WriteLine($"Naming {itemFullName}");
                 _console.SendKey(itemFullName);
                 _console.SendKey(C.Enter);
                 Thread.Sleep(500);
