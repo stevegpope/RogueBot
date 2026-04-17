@@ -1,4 +1,6 @@
-﻿namespace RogueBot
+﻿using System.Diagnostics;
+
+namespace RogueBot
 {
     public static class C
     {
@@ -46,5 +48,10 @@
         public const char WearArmor = 'W';
         public const char TakeOff = 'T';
         public const char Throw = 't';
+
+        public static void WriteLine(int pid, string msg)
+        {
+            Debug.WriteLine($"{pid}: {msg}");
+        }
     }
 }

@@ -56,7 +56,7 @@ namespace RogueBot
                         char move;
                         if (currentMap.Player != null)
                         {
-                            move = logic.ChooseMove(player, currentMap);
+                            move = logic.ChooseMove(player, currentMap, console.Pid);
                         }
                         else
                         {
@@ -75,7 +75,7 @@ namespace RogueBot
                     catch (Exception ex)
                     {
                         // Ignore errors if the window isn't ready yet
-                        Debug.WriteLine(ex);
+                        C.WriteLine(ProcessId, ex.Message);
                     }
                 }
             }
@@ -102,13 +102,13 @@ namespace RogueBot
             ClearState(console);
         }
 
-        private static void ClearState(ConsoleController console, int depth = 0)
+        private void ClearState(ConsoleController console, int depth = 0)
         {
             var map = console.WaitForTurnReady();
 
             if (depth > 25)
             {
-               Debug.WriteLine("broke");
+               C.WriteLine(ProcessId, "broke");
             }
 
             if (map.HasString("identify"))
@@ -176,11 +176,11 @@ namespace RogueBot
 
             try
             {
-                Debug.WriteLine($"Started new Rogue PID: {_rogue.Id}");
+                C.WriteLine(ProcessId, $"Started new Rogue PID: {_rogue.Id}");
             }
             catch
             {
-                Debug.WriteLine($"Error running rogue, try again");
+                C.WriteLine(ProcessId, $"Error running rogue, try again");
                 Thread.Sleep(1000);
                 RunRogue();
             }

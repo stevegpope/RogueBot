@@ -9,6 +9,8 @@ namespace RogueBot
 
         private int _pid;
 
+        public int Pid { get { return _pid; } }
+
         public ConsoleController(Process rogue)
         {
             _pid = rogue.Id;

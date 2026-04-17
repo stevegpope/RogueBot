@@ -61,7 +61,7 @@ namespace RogueBot
                     else
                     {
                         var code = maps[y][x];
-                        Debug.WriteLine($"Unexpected character {code} at position ({x}, {y})");
+                        throw new ArgumentException($"Unexpected character {code} at position ({x}, {y})");
                     }
                 }
             }

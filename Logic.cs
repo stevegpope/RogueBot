@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Security.Cryptography;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
 
 namespace RogueBot
@@ -24,10 +25,14 @@ namespace RogueBot
         private bool _startWaitingForMonsters;
         private const int HistorySize = 50000;
         private static readonly char[] Moves = new[] { C.Up, C.Down, C.Left, C.Right };
+        private int _pid = 0;
 
-        public char ChooseMove(Player player, Map currentMap)
+        public char ChooseMove(Player player, Map currentMap, int pid)
         {
-            var map = UpdateMap(player, currentMap);
+            _pid = pid;
+
+            var map = currentMap;
+            player.Update(pid, currentMap);
 
             if (map.HasString("more"))
                 return C.Space;
@@ -125,7 +130,7 @@ namespace RogueBot
                     _visited = new();
                     _lastPositions = new();
 
-                    Debug.WriteLine($"Down to {player.Level + 1}");
+                    C.WriteLine(pid, $"Down to {player.Level + 1}");
                     move = C.DownStairs;
                 }
                 else if (room != null)
@@ -238,7 +243,7 @@ namespace RogueBot
             var monster = GetCloseMonster(player, map);
             if (monster != null)
             {
-                Debug.WriteLine("Fight!");
+                C.WriteLine(_pid, "Fight!");
                 return GetMoveTowards(player, monster.Position);
             }
 
@@ -556,7 +561,7 @@ namespace RogueBot
             if (validMoves.Count == 1 && player.Position != _lastDeadEnd)
             {
                 var pos = (player.Position.X, player.Position.Y);
-                Debug.WriteLine("Dead end detected at " + pos);
+                C.WriteLine(_pid, "Dead end detected at " + pos);
                 _lastDeadEnd = player.Position;
                 _searchTurnsRemaining = 20;
                 return C.Search;
@@ -592,7 +597,7 @@ namespace RogueBot
 
             if (bestMove == C.Search)
             {
-                Debug.WriteLine("serach");
+                C.WriteLine(_pid, "serach");
             }
 
             return bestMove;
@@ -741,7 +746,7 @@ namespace RogueBot
             // Moves with no player
             if (Died(currentMap))
             {
-                Debug.WriteLine("Died");
+                C.WriteLine(_pid, "Died");
                 return C.Enter;
             }
 
@@ -751,13 +756,6 @@ namespace RogueBot
         public static bool Died(Map map)
         {
             return map.HasString("killed");
-        }
-
-        private Map UpdateMap(Player player, Map currentMap)
-        {
-            player.Update(currentMap);
-
-            return currentMap;
         }
     }
 }

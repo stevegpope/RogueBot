@@ -27,6 +27,9 @@ namespace RogueBot
         public int ExpLevel { get; private set; }
         public int ExpPoints { get; private set; }
         public Position Position { get; private set; }
+
+        private int _pid;
+
         public Map Map { get; private set; }
         public string State { get; private set; }
         public List<InventoryItem> InventoryItems { get; private set; }
@@ -37,7 +40,7 @@ namespace RogueBot
         public Player(Map map, ConsoleController console)
         {
             _console = console;
-            Update(map);
+            Update(_console.Pid, map);
         }
 
         internal bool Hungry()
@@ -94,7 +97,7 @@ namespace RogueBot
 
         internal void Use(string foundStr)
         {
-            Debug.WriteLine($"Try to use {foundStr}");
+            C.WriteLine(_pid, $"Try to use {foundStr}");
             var searchTerms = new[] { "ring", "sword", "potion", "scroll", "mail" };
             string itemType = null;
             foreach (var searchTerm in searchTerms)
@@ -118,14 +121,14 @@ namespace RogueBot
             if (itemType == null)
                 return;
 
-            Debug.WriteLine($"Use found {itemType} in '{foundStr}'");
+            C.WriteLine(_pid, $"Use found {itemType} in '{foundStr}'");
             InventoryItems = Inventory.Get(_console);
 
             // Assume more powerful items are later
             var newItem = InventoryItems.LastOrDefault(i => i.Name.Contains(itemType) && i.Status == null);
             if (newItem == null)
             {
-                Debug.WriteLine("Weird stuff, not there?");
+                C.WriteLine(_pid, "Weird stuff, not there?");
                 return;
             }
 
@@ -159,7 +162,7 @@ namespace RogueBot
 
         private void WearArmor(InventoryItem? newItem)
         {
-            Debug.WriteLine($"Trying to wear armor {newItem.Name} ({newItem.Letter})");
+            C.WriteLine(_pid, $"Trying to wear armor {newItem.Name} ({newItem.Letter})");
 
             _console.SendKey(C.TakeOff);
             Thread.Sleep(500);
@@ -175,7 +178,7 @@ namespace RogueBot
 
         internal void ReadScroll(InventoryItem? newItem)
         {
-            Debug.WriteLine($"Trying to read {newItem.Name} ({newItem.Letter})");
+            C.WriteLine(_pid, $"Trying to read {newItem.Name} ({newItem.Letter})");
 
             _console.SendKey(C.ReadScroll);
             _console.WaitForText( "Which object");
@@ -187,7 +190,7 @@ namespace RogueBot
 
         internal void QuaffPotion(InventoryItem? newItem)
         {
-            Debug.WriteLine($"Trying to quaff {newItem.Name} ({newItem.Letter})");
+            C.WriteLine(_pid, $"Trying to quaff {newItem.Name} ({newItem.Letter})");
 
             _console.SendKey(C.QuaffPotion);
             _console.WaitForText("Which object");
@@ -199,7 +202,7 @@ namespace RogueBot
 
         private void WieldSword(InventoryItem? newItem)
         {
-            Debug.WriteLine($"Trying to wield {newItem.Name} ({newItem.Letter})");
+            C.WriteLine(_pid, $"Trying to wield {newItem.Name} ({newItem.Letter})");
 
             _console.SendKey(C.Wield);
             _console.WaitForText("Which object");
@@ -210,7 +213,7 @@ namespace RogueBot
 
         private void WearRing(InventoryItem newItem)
         {
-            Debug.WriteLine($"Trying to wear ring {newItem.Name} ({newItem.Letter})");
+            C.WriteLine(_pid, $"Trying to wear ring {newItem.Name} ({newItem.Letter})");
 
             // Look for open ring slot
             var left = InventoryItems.FirstOrDefault(i => i.Status?.Contains("left hand") == true);
@@ -253,7 +256,7 @@ namespace RogueBot
                     itemFullName = $"{itemType} of {itemName}";
                 }
 
-                Debug.WriteLine("MORE");
+                C.WriteLine(_pid, "MORE");
                 _console.SendKey(C.Space);
                 Thread.Sleep(500);
                 map = new Map(_console.ReadMap());
@@ -263,7 +266,7 @@ namespace RogueBot
 
             if (map.HasString("call it"))
             {
-                Debug.WriteLine($"Naming {itemFullName}");
+                C.WriteLine(_pid, $"Naming {itemFullName}");
                 _console.SendKey(itemFullName);
                 _console.SendKey(C.Enter);
                 Thread.Sleep(500);
@@ -274,12 +277,12 @@ namespace RogueBot
                 Identify();
             }
 
-            Debug.WriteLine("Finished using " + itemType);
+            C.WriteLine(_pid, "Finished using " + itemType);
         }
 
         public void Identify()
         {
-            Debug.WriteLine("Identifying");
+            C.WriteLine(_pid, "Identifying");
 
             Map = new Map(_console.ReadMap());
             while (Map.HasString("more"))
@@ -289,33 +292,33 @@ namespace RogueBot
                 Map = new Map(_console.ReadMap());
             }
 
-            Debug.WriteLine("Open list");
+            C.WriteLine(_pid, "Open list");
             _console.SendKey("*");
             Thread.Sleep(1000);
 
             Map = new Map(_console.ReadMap());
             if (Map.HasString("appropriate"))
             {
-                Debug.WriteLine("Nothing appropriate");
+                C.WriteLine(_pid, "Nothing appropriate");
                 _console.SendKey(C.Space);
                 Thread.Sleep(500);
             }
             else
             {
-                Debug.WriteLine("Identify list present");
+                C.WriteLine(_pid, "Identify list present");
                 var lines = Map.Maps.Select(line => new string(line)).ToList();
                 var items = InventoryItem.Parse(lines);
 
-                Debug.WriteLine("Close list");
+                C.WriteLine(_pid, "Close list");
                 _console.SendKey(C.Space);
                 Thread.Sleep(500);
 
-                Debug.WriteLine("Choose item to ID");
+                C.WriteLine(_pid, "Choose item to ID");
                 if (items.Any())
                 {
                     var item = items.Last();
                     _console.SendKey(item.Letter);
-                    Debug.WriteLine("Finish up");
+                    C.WriteLine(_pid, "Finish up");
                     FinishUsingItem(item.Name);
                 }
             }
@@ -355,8 +358,10 @@ namespace RogueBot
             }
         }
 
-        internal void Update(Map map)
+        internal void Update(int pid, Map map)
         {
+            _pid = pid;
+
             Map = map;
             var lines = map.Maps;
 
@@ -392,7 +397,7 @@ namespace RogueBot
 
         internal void ThrowItem(InventoryItem item, char direction)
         {
-            Debug.WriteLine($"Throw ${item.Name} at ${direction}");
+            C.WriteLine(_pid, $"Throw ${item.Name} at ${direction}");
             _console.SendKey(C.Throw);
             Thread.Sleep(500);
 
