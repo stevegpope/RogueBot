@@ -7,12 +7,16 @@
     <Nullable>enable</Nullable>
 	  <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
-	
+
 	<ItemGroup>
-		<!-- Replace 'RogueWatcher' with the actual folder name if different -->
 		<Compile Remove="RogueWatcher\**" />
 		<EmbeddedResource Remove="RogueWatcher\**" />
 		<None Remove="RogueWatcher\**" />
+	</ItemGroup>
+	<ItemGroup>
+		<Compile Remove="RogueViewer\**" />
+		<EmbeddedResource Remove="RogueViewer\**" />
+		<None Remove="RogueViewer\**" />
 	</ItemGroup>
 
 	<ItemGroup>

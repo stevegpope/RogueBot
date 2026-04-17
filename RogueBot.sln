@@ -5,7 +5,7 @@ VisualStudioVersion = 18.4.11626.88
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RogueBot", "RogueBot.csproj", "{DD9F941D-6CF5-D512-7643-B957BC9E787B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RogueWatcher", "RogueWatcher\RogueWatcher.csproj", "{E848C2AF-84A4-C13E-060E-3CC2E5F55688}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RogueViewer", "RogueViewer\RogueViewer.csproj", "{337FC8DB-9FFD-4C25-B6D4-76B4B78A21EA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +17,10 @@ Global
 		{DD9F941D-6CF5-D512-7643-B957BC9E787B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DD9F941D-6CF5-D512-7643-B957BC9E787B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DD9F941D-6CF5-D512-7643-B957BC9E787B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E848C2AF-84A4-C13E-060E-3CC2E5F55688}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E848C2AF-84A4-C13E-060E-3CC2E5F55688}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E848C2AF-84A4-C13E-060E-3CC2E5F55688}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E848C2AF-84A4-C13E-060E-3CC2E5F55688}.Release|Any CPU.Build.0 = Release|Any CPU
+		{337FC8DB-9FFD-4C25-B6D4-76B4B78A21EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{337FC8DB-9FFD-4C25-B6D4-76B4B78A21EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{337FC8DB-9FFD-4C25-B6D4-76B4B78A21EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{337FC8DB-9FFD-4C25-B6D4-76B4B78A21EA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

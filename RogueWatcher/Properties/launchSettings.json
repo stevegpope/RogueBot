@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "RogueWatcher": {
-      "commandName": "Project",
-      "commandLineArgs": "-p 50304"
-    }
-  }
-}
